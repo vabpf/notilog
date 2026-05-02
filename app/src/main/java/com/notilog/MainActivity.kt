@@ -5,10 +5,15 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Category
+import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
@@ -30,6 +35,12 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+data class BottomNavItem(
+    val screen: Screen,
+    val label: String,
+    val icon: ImageVector
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun NotilogApp() {
@@ -38,9 +49,9 @@ fun NotilogApp() {
     val currentDestination = navBackStackEntry?.destination
 
     val bottomNavItems = listOf(
-        Screen.Feed to "Feed",
-        Screen.Groups to "Groups",
-        Screen.Settings to "Settings"
+        BottomNavItem(Screen.Feed, "Feed", Icons.Default.History),
+        BottomNavItem(Screen.Groups, "Groups", Icons.Default.Category),
+        BottomNavItem(Screen.Settings, "Settings", Icons.Default.Settings)
     )
 
     val showBottomBar = currentDestination?.route?.startsWith("detail") == false
@@ -50,11 +61,11 @@ fun NotilogApp() {
         bottomBar = {
             if (showBottomBar) {
                 NavigationBar {
-                    bottomNavItems.forEach { (screen, label) ->
+                    bottomNavItems.forEach { item ->
                         NavigationBarItem(
-                            selected = currentDestination?.hierarchy?.any { it.route == screen.route } == true,
+                            selected = currentDestination?.hierarchy?.any { it.route == item.screen.route } == true,
                             onClick = {
-                                navController.navigate(screen.route) {
+                                navController.navigate(item.screen.route) {
                                     popUpTo(navController.graph.findStartDestination().id) {
                                         saveState = true
                                     }
@@ -62,8 +73,8 @@ fun NotilogApp() {
                                     restoreState = true
                                 }
                             },
-                            icon = {},
-                            label = { Text(label) }
+                            icon = { Icon(item.icon, contentDescription = item.label) },
+                            label = { Text(item.label) }
                         )
                     }
                 }

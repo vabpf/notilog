@@ -5,6 +5,7 @@ import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
 import com.notilog.data.local.NotificationDao
 import com.notilog.data.local.NotificationEntity
+import com.notilog.data.repository.CategoryRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -17,6 +18,9 @@ class NotilogListenerService : NotificationListenerService() {
 
     @Inject
     lateinit var notificationDao: NotificationDao
+
+    @Inject
+    lateinit var categoryRepository: CategoryRepository
 
     private val job = SupervisorJob()
     private val scope = CoroutineScope(Dispatchers.IO + job)
@@ -49,6 +53,8 @@ class NotilogListenerService : NotificationListenerService() {
                 return@launch
             }
 
+            val category = categoryRepository.getCategoryForPackage(packageName)
+
             val entity = NotificationEntity(
                 systemId = sbn.id,
                 tag = sbn.tag,
@@ -56,7 +62,8 @@ class NotilogListenerService : NotificationListenerService() {
                 appName = appName,
                 title = title,
                 textContent = text,
-                postTime = sbn.postTime
+                postTime = sbn.postTime,
+                category = category
             )
             notificationDao.insert(entity)
         }

@@ -2,6 +2,8 @@ package com.notilog.ui.settings
 
 import android.content.Intent
 import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.*
@@ -11,13 +13,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.google.android.gms.auth.api.signin.GoogleSignIn
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
+fun SettingsScreen(
+    onManageBlacklist: () -> Unit = {},
+    viewModel: SettingsViewModel = hiltViewModel()
+) {
     val autoCleanup by viewModel.autoCleanupEnabled.collectAsState()
     val retentionDays by viewModel.retentionDays.collectAsState()
+    val googleAccount by viewModel.googleAccount.collectAsState()
     val context = LocalContext.current
+
+    val signInLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val task = GoogleSignIn.getSignedInAccountFromIntent(result.data)
+        viewModel.handleGoogleSignInResult(task.result)
+    }
 
     Scaffold(
         topBar = {
@@ -39,12 +53,24 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        if (googleAccount != null) {
+                            Text(
+                                "Connected as ${googleAccount?.email}",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
                         Button(
-                            onClick = { /* TODO: Google Drive OAuth */ },
+                            onClick = { 
+                                signInLauncher.launch(viewModel.getGoogleSignInClient().signInIntent)
+                            },
                             modifier = Modifier.fillMaxWidth()
-                        ) { Text("Connect Google Drive") }
+                        ) { 
+                            Text(if (googleAccount == null) "Connect Google Drive" else "Switch Account") 
+                        }
                         OutlinedButton(
-                            onClick = { /* TODO: Trigger backup */ },
+                            onClick = { viewModel.runBackupNow() },
+                            enabled = googleAccount != null,
                             modifier = Modifier.fillMaxWidth()
                         ) { Text("Sync Now") }
                         Text(
@@ -88,6 +114,19 @@ fun SettingsScreen(viewModel: SettingsViewModel = hiltViewModel()) {
                             onClick = { viewModel.runCleanupNow() },
                             modifier = Modifier.fillMaxWidth()
                         ) { Text("Clean Up Now") }
+                    }
+                }
+            }
+            item {
+                Spacer(Modifier.height(8.dp))
+                Text("Privacy", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(8.dp))
+                OutlinedCard(modifier = Modifier.fillMaxWidth()) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        Button(
+                            onClick = onManageBlacklist,
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("Manage Blacklist") }
                     }
                 }
             }

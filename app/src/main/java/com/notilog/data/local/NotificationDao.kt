@@ -34,4 +34,7 @@ interface NotificationDao {
 
     @Query("SELECT * FROM notifications WHERE systemId = :systemId AND (tag = :tag OR (tag IS NULL AND :tag IS NULL)) ORDER BY postTime DESC")
     fun getVersionsBySystemId(systemId: Int, tag: String?): Flow<List<NotificationEntity>>
+
+    @Query("DELETE FROM notifications WHERE systemId = :systemId AND (tag = :tag OR (tag IS NULL AND :tag IS NULL))")
+    suspend fun deleteBySystemId(systemId: Int, tag: String?)
 }
