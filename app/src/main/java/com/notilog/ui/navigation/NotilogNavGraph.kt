@@ -10,12 +10,14 @@ import androidx.navigation.navArgument
 import com.notilog.ui.detail.DetailScreen
 import com.notilog.ui.feed.FeedScreen
 import com.notilog.ui.groups.GroupsScreen
+import com.notilog.ui.settings.BlacklistScreen
 import com.notilog.ui.settings.SettingsScreen
 
 sealed class Screen(val route: String) {
     object Feed : Screen("feed")
     object Groups : Screen("groups")
     object Settings : Screen("settings")
+    object Blacklist : Screen("blacklist")
     object Detail : Screen("detail/{systemId}/{tag}") {
         fun createRoute(systemId: Int, tag: String?) = "detail/$systemId/${tag ?: "null"}"
     }
@@ -43,7 +45,16 @@ fun NotilogNavGraph(
             GroupsScreen()
         }
         composable(Screen.Settings.route) {
-            SettingsScreen()
+            SettingsScreen(
+                onManageBlacklist = {
+                    navController.navigate(Screen.Blacklist.route)
+                }
+            )
+        }
+        composable(Screen.Blacklist.route) {
+            BlacklistScreen(
+                onBack = { navController.popBackStack() }
+            )
         }
         composable(
             route = Screen.Detail.route,
