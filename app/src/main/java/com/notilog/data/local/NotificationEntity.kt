@@ -8,7 +8,8 @@ import androidx.room.Index
     tableName = "notifications",
     indices = [
         Index(value = ["systemId"]),
-        Index(value = ["postTime"])
+        Index(value = ["postTime"]),
+        Index(value = ["isDeleted"])
     ]
 )
 data class NotificationEntity(
@@ -21,5 +22,7 @@ data class NotificationEntity(
     val textContent: String?,
     val postTime: Long,
     val isDismissed: Boolean = false,
-    val category: String = "Uncategorized"
+    val category: String = "Uncategorized",
+    val isDeleted: Boolean = false,
+    val deletedAt: Long? = null
 )

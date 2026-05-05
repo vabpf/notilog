@@ -1,9 +1,11 @@
 package com.notilog.ui.feed
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.notilog.data.local.BlacklistedAppDao
 import com.notilog.data.local.BlacklistedAppEntity
+import com.notilog.data.local.CategoryCountEntry
 import com.notilog.data.local.NotificationDao
 import com.notilog.data.local.NotificationEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -15,13 +17,16 @@ import javax.inject.Inject
 @HiltViewModel
 class FeedViewModel @Inject constructor(
     private val notificationDao: NotificationDao,
-    private val blacklistedAppDao: BlacklistedAppDao
+    private val blacklistedAppDao: BlacklistedAppDao,
+    private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
 
-    private val _selectedCategory = MutableStateFlow("All")
+    private val _selectedCategory = MutableStateFlow(
+        savedStateHandle.get<String>("selectedCategory") ?: "All"
+    )
     val selectedCategory: StateFlow<String> = _selectedCategory.asStateFlow()
 
     private val _selectedIds = MutableStateFlow<Set<Long>>(emptySet())
@@ -35,6 +40,9 @@ class FeedViewModel @Inject constructor(
         .map { list -> list.map { it.packageName }.toSet() }
         .stateIn(viewModelScope, SharingStarted.Lazily, emptySet())
 
+    val categoryCounts: StateFlow<List<CategoryCountEntry>> = notificationDao.getCategoryNotificationCounts()
+        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+
     @OptIn(ExperimentalCoroutinesApi::class)
     val notifications: StateFlow<List<NotificationEntity>> = combine(
         _searchQuery,
@@ -43,14 +51,21 @@ class FeedViewModel @Inject constructor(
     ) { query, category, blacklisted ->
         Triple(query, category, blacklisted)
     }.flatMapLatest { (query, category, blacklisted) ->
-        val flow = if (query.isBlank()) {
-            notificationDao.getAllNotifications()
+        val baseFlow = if (category == "All") {
+            if (query.isBlank()) {
+                notificationDao.getAllNotifications()
+            } else {
+                notificationDao.searchAllNotifications(query)
+            }
         } else {
-            notificationDao.searchAllNotifications(query)
+            if (query.isBlank()) {
+                notificationDao.getNotificationsByCategory(category)
+            } else {
+                notificationDao.searchAllNotifications(query)
+            }
         }
-        flow.map { list ->
+        baseFlow.map { list ->
             list.filter { it.packageName !in blacklisted }
-                .filter { category == "All" || it.category == category }
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
@@ -60,6 +75,7 @@ class FeedViewModel @Inject constructor(
 
     fun setCategory(category: String) {
         _selectedCategory.value = category
+        savedStateHandle["selectedCategory"] = category
     }
 
     fun toggleSelection(id: Long) {
@@ -90,16 +106,26 @@ class FeedViewModel @Inject constructor(
 
     fun deleteNotification(id: Long) {
         viewModelScope.launch {
-            notificationDao.deleteById(id)
+            notificationDao.softDeleteById(id, System.currentTimeMillis())
         }
     }
 
     fun deleteSelected() {
         viewModelScope.launch {
-            _selectedIds.value.forEach { id ->
-                notificationDao.deleteById(id)
-            }
+            notificationDao.softDeleteByIds(_selectedIds.value.toList(), System.currentTimeMillis())
             clearSelection()
+        }
+    }
+
+    fun restoreFromTrash(id: Long) {
+        viewModelScope.launch {
+            notificationDao.restoreFromTrash(id)
+        }
+    }
+
+    fun permanentDeleteNotification(id: Long) {
+        viewModelScope.launch {
+            notificationDao.deleteById(id)
         }
     }
 }

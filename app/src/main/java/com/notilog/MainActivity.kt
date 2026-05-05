@@ -3,23 +3,30 @@ package com.notilog
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Category
-import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.notilog.ui.navigation.NotilogNavGraph
 import com.notilog.ui.navigation.Screen
+import com.notilog.ui.theme.GradientBackground
+import com.notilog.ui.theme.GlassSurface
+import com.notilog.ui.theme.LocalGlassTokens
 import com.notilog.ui.theme.NotilogTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -49,41 +56,50 @@ fun NotilogApp() {
     val currentDestination = navBackStackEntry?.destination
 
     val bottomNavItems = listOf(
-        BottomNavItem(Screen.Feed, "Feed", Icons.Default.History),
-        BottomNavItem(Screen.Groups, "Groups", Icons.Default.Category),
-        BottomNavItem(Screen.Settings, "Settings", Icons.Default.Settings)
+        BottomNavItem(Screen.Feed, "Feed", Icons.Default.Home),
+        BottomNavItem(Screen.Groups, "Groups", Icons.Default.List)
     )
 
     val showBottomBar = currentDestination?.route?.startsWith("detail") == false
 
-    Scaffold(
-        modifier = Modifier.fillMaxSize(),
-        bottomBar = {
-            if (showBottomBar) {
-                NavigationBar {
-                    bottomNavItems.forEach { item ->
-                        NavigationBarItem(
-                            selected = currentDestination?.hierarchy?.any { it.route == item.screen.route } == true,
-                            onClick = {
-                                navController.navigate(item.screen.route) {
-                                    popUpTo(navController.graph.findStartDestination().id) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            },
-                            icon = { Icon(item.icon, contentDescription = item.label) },
-                            label = { Text(item.label) }
-                        )
+    GradientBackground {
+        Scaffold(
+            modifier = Modifier.fillMaxSize(),
+            containerColor = Color.Transparent,
+            bottomBar = {
+                if (showBottomBar) {
+                    GlassSurface(
+                        cornerRadius = 0.dp
+                    ) {
+                        NavigationBar(
+                            containerColor = Color.Transparent,
+                            tonalElevation = 0.dp,
+                        ) {
+                            bottomNavItems.forEach { item ->
+                                NavigationBarItem(
+                                    selected = currentDestination?.hierarchy?.any { it.route == item.screen.route } == true,
+                                    onClick = {
+                                        navController.navigate(item.screen.route) {
+                                            popUpTo(navController.graph.findStartDestination().id) {
+                                                saveState = true
+                                            }
+                                            launchSingleTop = true
+                                            restoreState = true
+                                        }
+                                    },
+                                    icon = { Icon(item.icon, contentDescription = item.label) },
+                                    label = { Text(item.label) }
+                                )
+                            }
+                        }
                     }
                 }
             }
+        ) { innerPadding ->
+            NotilogNavGraph(
+                navController = navController,
+                modifier = Modifier.padding(innerPadding)
+            )
         }
-    ) { innerPadding ->
-        NotilogNavGraph(
-            navController = navController,
-            modifier = Modifier.padding(innerPadding)
-        )
     }
 }

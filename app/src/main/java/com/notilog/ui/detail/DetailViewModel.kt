@@ -8,6 +8,7 @@ import com.notilog.data.local.NotificationDao
 import com.notilog.data.local.NotificationEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
