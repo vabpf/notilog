@@ -107,7 +107,7 @@ fun BlacklistedAppCard(packageName: String, onRemove: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            AppIcon(packageName, size = 40)
+            AppIcon(packageName, "Uncategorized", size = 40)
             Text(
                 packageName,
                 modifier = Modifier.weight(1f),

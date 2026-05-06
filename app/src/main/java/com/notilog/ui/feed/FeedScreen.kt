@@ -4,6 +4,7 @@ import android.graphics.drawable.Drawable
 import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -26,22 +27,25 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.Dp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.notilog.data.local.NotificationEntity
@@ -110,7 +114,7 @@ fun FeedScreen(
                 }
                 
                 item {
-                    SearchSection(
+                    FeedSearchSection(
                         query = searchQuery,
                         onQueryChange = viewModel::setSearchQuery
                     )
@@ -169,7 +173,6 @@ fun HeroBanner() {
         containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
-            // Stylized background pattern
             Canvas(modifier = Modifier.fillMaxSize()) {
                 val path = android.graphics.Path()
                 path.moveTo(size.width * 0.7f, 0f)
@@ -263,7 +266,7 @@ fun AppHeader(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SearchSection(
+fun FeedSearchSection(
     query: String,
     onQueryChange: (String) -> Unit
 ) {
@@ -299,6 +302,58 @@ fun SearchSection(
                 containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             ),
             singleLine = true
+        )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SelectionTopBar(
+    selectedCount: Int,
+    onClearSelection: () -> Unit,
+    onDeleteSelected: () -> Unit,
+    onBlacklistSelected: () -> Unit
+) {
+    GlassSurface(cornerRadius = 0.dp) {
+        TopAppBar(
+            title = {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            "$selectedCount",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onPrimary,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                    Text("selected", fontWeight = FontWeight.SemiBold)
+                }
+            },
+            navigationIcon = {
+                IconButton(onClick = onClearSelection) {
+                    Icon(Icons.Default.Close, contentDescription = "Clear selection")
+                }
+            },
+            actions = {
+                IconButton(onClick = onBlacklistSelected) {
+                    Icon(Icons.Default.Warning, contentDescription = "Blacklist selected")
+                }
+                IconButton(onClick = onDeleteSelected) {
+                    Icon(Icons.Default.Delete, contentDescription = "Delete selected")
+                }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = Color.Transparent
+            )
         )
     }
 }

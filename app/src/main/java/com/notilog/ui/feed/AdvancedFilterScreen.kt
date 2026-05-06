@@ -27,6 +27,8 @@ import androidx.compose.ui.unit.sp
 import com.notilog.ui.theme.GlassCard
 import com.notilog.ui.theme.GlassSurface
 
+import androidx.compose.ui.unit.sp
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AdvancedFilterScreen(
@@ -102,7 +104,7 @@ fun AdvancedFilterScreen(
             verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             item {
-                SearchSection(query = searchQuery, onQueryChange = { searchQuery = it })
+                FilterSearchSection(query = searchQuery, onQueryChange = { searchQuery = it })
             }
 
             item {
@@ -129,7 +131,7 @@ fun AdvancedFilterScreen(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SearchSection(query: String, onQueryChange: (String) -> Unit) {
+private fun FilterSearchSection(query: String, onQueryChange: (String) -> Unit) {
     OutlinedTextField(
         value = query,
         onValueChange = onQueryChange,

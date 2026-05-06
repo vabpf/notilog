@@ -67,7 +67,7 @@ fun GroupsScreen(
 
     Scaffold(
         topBar = {
-            AppHeader(title = "Groups")
+            AppHeader()
         },
         containerColor = Color.Transparent
     ) { padding ->

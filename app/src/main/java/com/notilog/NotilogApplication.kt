@@ -2,6 +2,8 @@ package com.notilog
 
 import android.app.Application
 import android.util.Log
+import androidx.hilt.work.HiltWorkerFactory
+import androidx.work.Configuration
 import com.notilog.data.repository.CategoryRepository
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
@@ -11,12 +13,22 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltAndroidApp
-class NotilogApplication : Application() {
+class NotilogApplication : Application(), Configuration.Provider {
 
     @Inject
     lateinit var categoryRepository: CategoryRepository
 
+    @Inject
+    lateinit var workerFactory: HiltWorkerFactory
+
     private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
+
+    override fun getWorkManagerConfiguration(): Configuration {
+        return Configuration.Builder()
+            .setWorkerFactory(workerFactory)
+            .setMinimumLoggingLevel(Log.INFO)
+            .build()
+    }
 
     override fun onCreate() {
         super.onCreate()

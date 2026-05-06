@@ -166,7 +166,7 @@ fun ExcludedAppCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            AppIcon(packageName, size = 36)
+            AppIcon(packageName, "Uncategorized", size = 36)
             Text(
                 packageName,
                 modifier = Modifier.weight(1f),

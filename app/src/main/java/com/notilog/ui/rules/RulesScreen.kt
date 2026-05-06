@@ -1,18 +1,16 @@
 package com.notilog.ui.rules
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
-import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -118,7 +116,7 @@ fun RuleCard(
     GlassCard(
         modifier = Modifier.fillMaxWidth(),
         cornerRadius = 24.dp,
-        containerColor = MaterialTheme.colorScheme.surfaceContainerLow
+        containerColor = MaterialTheme.colorScheme.surface
     ) {
         Column(
             modifier = Modifier.padding(20.dp),
@@ -215,7 +213,6 @@ fun CreateRulePlaceholder() {
                 width = 2.dp,
                 color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
                 shape = RoundedCornerShape(24.dp),
-                // Dashed border would be nice, but Solid is fine for now
             )
             .clickable { },
         contentAlignment = Alignment.Center
