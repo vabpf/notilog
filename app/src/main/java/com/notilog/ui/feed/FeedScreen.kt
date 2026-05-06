@@ -79,126 +79,80 @@ fun FeedScreen(
 
     Scaffold(
         topBar = {
-            AppHeader(onSettingsClick = { navController?.navigate(com.notilog.ui.navigation.Screen.Settings.route) })
+            if (isSelectionMode) {
+                SelectionTopBar(
+                    selectedCount = selectedIds.size,
+                    onClearSelection = viewModel::clearSelection,
+                    onDeleteSelected = viewModel::deleteSelected,
+                    onBlacklistSelected = viewModel::blacklistSelected
+                )
+            } else {
+                AppHeader(
+                    onHistoryClick = { /* TODO */ },
+                    onSettingsClick = { navController?.navigate(com.notilog.ui.navigation.Screen.Settings.route) }
+                )
+            }
         },
         containerColor = Color.Transparent
     ) { padding ->
-        // Body header: include search and quick filters below the compact header
-        SearchBar(
-            query = searchQuery,
-            onQueryChange = viewModel::setSearchQuery,
-            onSearch = {},
-            active = false,
-            onActiveChange = {},
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 4.dp),
-            placeholder = {
-                Text(
-                    "Search notifications...",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                )
-            },
-            leadingIcon = {
-                Icon(
-                    Icons.Default.Search,
-                    contentDescription = "Search",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                )
-            },
-            trailingIcon = {
-                IconButton(onClick = { /* TODO: Navigate to advanced filters */ }) {
-                    Icon(Icons.Default.List, contentDescription = "Filter")
-                }
-            },
-            colors = SearchBarDefaults.colors(
-                containerColor = LocalGlassTokens.current.glassBackground
-            )
-        ) {}
-        QuickFilterBar(
-            categoryCounts = categoryCounts,
-            selectedCategory = selectedCategory,
-            onCategorySelected = viewModel::setCategory
-        )
-        if (notifications.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                GlassCard(
-                    modifier = Modifier.padding(32.dp),
-                    cornerRadius = 24.dp
-                ) {
-                    Column(
-                        modifier = Modifier.padding(40.dp, 32.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(80.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    Brush.radialGradient(
-                                        colors = listOf(
-                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                                            Color.Transparent
-                                        )
-                                    )
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.List,
-                                contentDescription = null,
-                                modifier = Modifier.size(40.dp),
-                                tint = MaterialTheme.colorScheme.primary
-                            )
-                        }
-                        Text(
-                            "No notifications found",
-                            style = MaterialTheme.typography.titleLarge,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Text(
-                            "Try adjusting your search or filters",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center
+                item {
+                    HeroBanner()
+                }
+                
+                item {
+                    SearchSection(
+                        query = searchQuery,
+                        onQueryChange = viewModel::setSearchQuery
+                    )
+                }
+
+                item {
+                    QuickFilterBar(
+                        categoryCounts = categoryCounts,
+                        selectedCategory = selectedCategory,
+                        onCategorySelected = viewModel::setCategory
+                    )
+                }
+
+                if (notifications.isEmpty()) {
+                    item {
+                        EmptyState()
+                    }
+                } else {
+                    items(notifications, key = { it.id }) { notification ->
+                        NotificationCard(
+                            notification = notification,
+                            isSelected = notification.id in selectedIds,
+                            isSelectionMode = isSelectionMode,
+                            onClick = {
+                                if (isSelectionMode) {
+                                    viewModel.toggleSelection(notification.id)
+                                } else {
+                                    onNotificationClick(notification.systemId, notification.tag)
+                                }
+                            },
+                            onLongClick = {
+                                if (!isSelectionMode) {
+                                    viewModel.toggleSelection(notification.id)
+                                }
+                            },
+                            onDelete = { viewModel.deleteNotification(notification.id) }
                         )
                     }
                 }
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                items(notifications, key = { it.id }) { notification ->
-                    NotificationCard(
-                        notification = notification,
-                        isSelected = notification.id in selectedIds,
-                        isSelectionMode = isSelectionMode,
-                        onClick = {
-                            if (isSelectionMode) {
-                                viewModel.toggleSelection(notification.id)
-                            } else {
-                                onNotificationClick(notification.systemId, notification.tag)
-                            }
-                        },
-                        onLongClick = {
-                            if (!isSelectionMode) {
-                                viewModel.toggleSelection(notification.id)
-                            }
-                        },
-                        onDelete = { viewModel.deleteNotification(notification.id) }
-                    )
+                
+                item {
+                    Spacer(Modifier.height(80.dp))
                 }
             }
         }
@@ -206,49 +160,193 @@ fun FeedScreen(
 }
 
 @Composable
-fun AppHeader(
-    title: String = "Notilog",
-    onSettingsClick: () -> Unit = {},
-    showBackButton: Boolean = false,
-    onBackClick: () -> Unit = {}
-) {
-    Row(
+fun HeroBanner() {
+    GlassCard(
         modifier = Modifier
             .fillMaxWidth()
-            .height(56.dp)
-            .padding(horizontal = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween
+            .height(120.dp),
+        cornerRadius = 24.dp,
+        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
     ) {
-        // Left: Back button or Logo
-        if (showBackButton) {
-            IconButton(onClick = onBackClick) {
-                Icon(
-                    imageVector = Icons.Default.ArrowBack,
-                    contentDescription = "Back"
+        Box(modifier = Modifier.fillMaxSize()) {
+            // Stylized background pattern
+            Canvas(modifier = Modifier.fillMaxSize()) {
+                val path = android.graphics.Path()
+                path.moveTo(size.width * 0.7f, 0f)
+                path.cubicTo(
+                    size.width * 0.8f, size.height * 0.2f,
+                    size.width * 0.6f, size.height * 0.8f,
+                    size.width, size.height * 0.6f
+                )
+                path.lineTo(size.width, 0f)
+                path.close()
+                drawContext.canvas.nativeCanvas.drawPath(
+                    path,
+                    android.graphics.Paint().apply {
+                        color = android.graphics.Color.WHITE
+                        alpha = 20
+                        style = android.graphics.Paint.Style.FILL
+                    }
                 )
             }
-        } else {
-            Box(
+
+            Column(
                 modifier = Modifier
-                    .size(28.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
-            )
+                    .fillMaxSize()
+                    .padding(24.dp),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    "Your Digital Archive",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    "Organized and secure.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
+                    modifier = Modifier.padding(top = 2.dp)
+                )
+            }
         }
+    }
+}
 
-        // Center: Title
-        Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-            )
-        }
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AppHeader(
+    onHistoryClick: () -> Unit = {},
+    onSettingsClick: () -> Unit = {}
+) {
+    GlassSurface(
+        cornerRadius = 0.dp,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        TopAppBar(
+            title = {
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Text(
+                        "Notilog",
+                        style = MaterialTheme.typography.displaySmall.copy(fontSize = 24.sp),
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = (-0.02).sp
+                    )
+                }
+            },
+            navigationIcon = {
+                IconButton(onClick = onHistoryClick) {
+                    Icon(
+                        Icons.Default.Refresh,
+                        contentDescription = "History",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            actions = {
+                IconButton(onClick = onSettingsClick) {
+                    Icon(
+                        Icons.Default.Settings,
+                        contentDescription = "Settings",
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = Color.Transparent
+            ),
+            modifier = Modifier.statusBarsPadding()
+        )
+    }
+}
 
-        // Right: Settings icon
-        IconButton(onClick = onSettingsClick) {
-            Icon(imageVector = Icons.Default.Settings, contentDescription = "Settings")
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SearchSection(
+    query: String,
+    onQueryChange: (String) -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+    ) {
+        OutlinedTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(56.dp),
+            placeholder = {
+                Text(
+                    "Search notifications...",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                )
+            },
+            leadingIcon = {
+                Icon(
+                    Icons.Default.Search,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                )
+            },
+            shape = RoundedCornerShape(32.dp),
+            colors = TextFieldDefaults.outlinedTextFieldColors(
+                focusedBorderColor = MaterialTheme.colorScheme.primary,
+                unfocusedBorderColor = Color.Transparent,
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            ),
+            singleLine = true
+        )
+    }
+}
+
+@Composable
+fun EmptyState() {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 32.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        GlassCard(
+            modifier = Modifier.padding(16.dp),
+            cornerRadius = 24.dp
+        ) {
+            Column(
+                modifier = Modifier.padding(40.dp, 32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(80.dp)
+                        .clip(CircleShape)
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.List,
+                        contentDescription = null,
+                        modifier = Modifier.size(40.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+                Text(
+                    "No notifications found",
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    "Try adjusting your search or filters",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    textAlign = TextAlign.Center
+                )
+            }
         }
     }
 }
@@ -265,71 +363,54 @@ fun QuickFilterBar(
 
     if (activeCategories.isEmpty()) return
 
-    Box(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp, vertical = 4.dp)
+    LazyRow(
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        contentPadding = PaddingValues(vertical = 12.dp),
+        modifier = Modifier.fillMaxWidth()
     ) {
-        val blurModifier = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            Modifier.blur(8.dp)
-        } else {
-            Modifier
-        }
-        Box(
-            modifier = Modifier
-                .matchParentSize()
-                .clip(RoundedCornerShape(12.dp))
-                .background(
-                    LocalGlassTokens.current.glassBackground.copy(alpha = 0.6f)
+        item {
+            val isSelected = selectedCategory == "All"
+            FilterChip(
+                selected = isSelected,
+                onClick = { onCategorySelected("All") },
+                label = { Text("All") },
+                shape = RoundedCornerShape(8.dp),
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    containerColor = Color.Transparent,
+                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
+                border = FilterChipDefaults.filterChipBorder(
+                    borderColor = if (isSelected) Color.Transparent else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                    borderWidth = 1.dp
                 )
-                .then(blurModifier)
-        )
-        LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
-            modifier = Modifier
-                .clip(RoundedCornerShape(12.dp))
-        ) {
-            items(activeCategories) { entry ->
-                val isSelected = selectedCategory == entry.category
-                val categoryColor = categoryColors[entry.category] ?: MaterialTheme.colorScheme.tertiary
-                Surface(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(16.dp))
-                        .border(
-                            width = if (isSelected) 1.5.dp else 1.dp,
-                            color = if (isSelected) categoryColor else categoryColor.copy(alpha = 0.3f),
-                            shape = RoundedCornerShape(16.dp)
-                        )
-                        .clickable { onCategorySelected(if (isSelected) "All" else entry.category) },
-                    color = if (isSelected) categoryColor.copy(alpha = 0.15f) else Color.Transparent
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = entry.category,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = if (isSelected) categoryColor else MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Medium
-                        )
-                        Text(
-                            text = "${entry.count}",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = categoryColor,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-            }
+            )
+        }
+        items(activeCategories) { entry ->
+            val isSelected = selectedCategory == entry.category
+            FilterChip(
+                selected = isSelected,
+                onClick = { onCategorySelected(if (isSelected) "All" else entry.category) },
+                label = { Text(entry.category) },
+                shape = RoundedCornerShape(8.dp),
+                colors = FilterChipDefaults.filterChipColors(
+                    selectedContainerColor = MaterialTheme.colorScheme.primaryContainer,
+                    selectedLabelColor = MaterialTheme.colorScheme.onPrimaryContainer,
+                    containerColor = Color.Transparent,
+                    labelColor = MaterialTheme.colorScheme.onSurfaceVariant
+                ),
+                border = FilterChipDefaults.filterChipBorder(
+                    borderColor = if (isSelected) Color.Transparent else MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                    borderWidth = 1.dp
+                )
+            )
         }
     }
 }
 
 @Composable
-fun AppIcon(packageName: String, size: Int = 32) {
+fun AppIcon(packageName: String, category: String, size: Int = 40) {
     val context = LocalContext.current
     val icon = remember(packageName) {
         try {
@@ -338,88 +419,30 @@ fun AppIcon(packageName: String, size: Int = 32) {
             null
         }
     }
+    val categoryColor = categoryColors[category] ?: MaterialTheme.colorScheme.secondary
 
     Box(
         modifier = Modifier
             .size(size.dp)
             .clip(CircleShape)
-            .background(
-                Brush.radialGradient(
-                    colors = listOf(
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
-                        MaterialTheme.colorScheme.secondary.copy(alpha = 0.08f),
-                        Color.Transparent
-                    )
-                )
-            )
-            .border(
-                width = 1.dp,
-                color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
-                shape = CircleShape
-            ),
+            .background(categoryColor)
+            .padding(8.dp),
         contentAlignment = Alignment.Center
     ) {
         if (icon != null) {
             Image(
                 bitmap = icon.toBitmap().asImageBitmap(),
                 contentDescription = null,
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(2.dp)
+                modifier = Modifier.fillMaxSize()
+            )
+        } else {
+            Icon(
+                Icons.Default.Refresh,
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.fillMaxSize()
             )
         }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-fun SelectionTopBar(
-    selectedCount: Int,
-    onClearSelection: () -> Unit,
-    onDeleteSelected: () -> Unit,
-    onBlacklistSelected: () -> Unit
-) {
-    GlassSurface(cornerRadius = 0.dp) {
-        TopAppBar(
-            title = {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(24.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            "$selectedCount",
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onPrimary,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                    Text("selected", fontWeight = FontWeight.SemiBold)
-                }
-            },
-            navigationIcon = {
-                IconButton(onClick = onClearSelection) {
-                    Icon(Icons.Default.Close, contentDescription = "Clear selection")
-                }
-            },
-            actions = {
-                IconButton(onClick = onBlacklistSelected) {
-                    Icon(Icons.Default.Warning, contentDescription = "Blacklist selected")
-                }
-                IconButton(onClick = onDeleteSelected) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete selected")
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = Color.Transparent
-            )
-        )
     }
 }
 
@@ -433,105 +456,75 @@ private fun NotificationCard(
     onLongClick: () -> Unit,
     onDelete: () -> Unit
 ) {
-    val categoryColor = categoryColors[notification.category] ?: MaterialTheme.colorScheme.tertiary
-
     GlassCard(
         modifier = Modifier.fillMaxWidth(),
         onClick = onClick,
         containerColor = if (isSelected)
             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.8f)
         else null,
-        cornerRadius = 20.dp,
-        shadowElevation = if (isSelected) 12.dp else 6.dp
+        cornerRadius = 16.dp,
+        shadowElevation = if (isSelected) 8.dp else 4.dp
     ) {
-        SelectionContainer {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .combinedClickable(
-                        onClick = onClick,
-                        onLongClick = onLongClick
-                    )
-                    .padding(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(14.dp)
-            ) {
-                AnimatedVisibility(visible = isSelectionMode) {
-                    Checkbox(
-                        checked = isSelected,
-                        onCheckedChange = { onClick() }
-                    )
-                }
-                AppIcon(notification.packageName, size = 40)
-                Column(modifier = Modifier.weight(1f)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Text(
-                            text = notification.appName,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = if (isSelected)
-                                MaterialTheme.colorScheme.onPrimaryContainer
-                            else
-                                categoryColor,
-                            fontWeight = FontWeight.Bold
-                        )
-                        TimeChip(text = formatTime(notification.postTime))
-                    }
-                    Spacer(Modifier.height(4.dp))
-                    if (!notification.title.isNullOrBlank()) {
-                        Text(
-                            text = notification.title,
-                            style = MaterialTheme.typography.titleSmall,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-                    Spacer(Modifier.height(2.dp))
-                    if (!notification.textContent.isNullOrBlank()) {
-                        Text(
-                            text = notification.textContent,
-                            style = MaterialTheme.typography.bodyMedium,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                    if (notification.isDismissed || notification.category != "Uncategorized") {
-                        Spacer(Modifier.height(6.dp))
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            if (notification.isDismissed) {
-                                StatusBadge(
-                                    text = "Dismissed",
-                                    color = MaterialTheme.colorScheme.error
-                                )
-                            }
-                            if (notification.category != "Uncategorized" && notification.category.isNotBlank()) {
-                                StatusBadge(
-                                    text = notification.category,
-                                    color = categoryColor
-                                )
-                            }
-                        }
-                    }
-                }
-                // Delete button
-                IconButton(
-                    onClick = onDelete,
-                    modifier = Modifier.size(32.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = onLongClick
+                )
+                .padding(16.dp),
+            verticalAlignment = Alignment.Top,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            AnimatedVisibility(visible = isSelectionMode) {
+                Checkbox(
+                    checked = isSelected,
+                    onCheckedChange = { onClick() }
+                )
+            }
+            
+            AppIcon(notification.packageName, notification.category)
+            
+            Column(modifier = Modifier.weight(1f)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Delete",
-                        tint = MaterialTheme.colorScheme.error.copy(alpha = 0.7f),
-                        modifier = Modifier.size(18.dp)
+                    Text(
+                        text = notification.appName,
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = formatTime(notification.postTime),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                
+                if (!notification.title.isNullOrBlank()) {
+                    Text(
+                        text = notification.title,
+                        style = MaterialTheme.typography.titleSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+                
+                if (!notification.textContent.isNullOrBlank()) {
+                    Text(
+                        text = notification.textContent,
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 2.dp)
                     )
                 }
             }

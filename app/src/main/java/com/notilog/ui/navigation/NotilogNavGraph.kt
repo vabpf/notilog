@@ -22,7 +22,9 @@ import com.notilog.ui.settings.SettingsScreen
 
 sealed class Screen(val route: String) {
     object Feed : Screen("feed")
-    object Groups : Screen("groups")
+    object Filters : Screen("filters")
+    object Rules : Screen("rules")
+    object Insights : Screen("insights")
     object Settings : Screen("settings")
     object Blacklist : Screen("blacklist")
     object Detail : Screen("detail/{systemId}/{tag}") {
@@ -58,15 +60,17 @@ fun NotilogNavGraph(
                 navController = navController
             )
         }
-        composable(Screen.Groups.route) {
-            GroupsScreen(
-                onCategoryClick = { category ->
-                    pendingCategory = category
-                    navController.navigate(Screen.Feed.route) {
-                        popUpTo(Screen.Feed.route) { inclusive = false }
-                    }
-                }
+        composable(Screen.Filters.route) {
+            // Placeholder for Advanced Filters
+            com.notilog.ui.feed.AdvancedFilterScreen(
+                onBack = { navController.popBackStack() }
             )
+        }
+        composable(Screen.Rules.route) {
+            com.notilog.ui.rules.RulesScreen()
+        }
+        composable(Screen.Insights.route) {
+            com.notilog.ui.insights.InsightsScreen()
         }
         composable(Screen.Settings.route) {
             SettingsScreen(

@@ -55,10 +55,14 @@ fun NotilogApp() {
 
     val bottomNavItems = listOf(
         BottomNavItem(Screen.Feed, "Feed", Icons.Default.Refresh),
-        BottomNavItem(Screen.Groups, "Groups", Icons.Default.List)
+        BottomNavItem(Screen.Filters, "Filters", Icons.Default.List),
+        BottomNavItem(Screen.Rules, "Rules", Icons.Default.Star),
+        BottomNavItem(Screen.Insights, "Insights", Icons.Default.Info)
     )
 
-    val showBottomBar = currentDestination?.route?.startsWith("detail") == false
+    val showBottomBar = currentDestination?.route?.let { route ->
+        route != Screen.Settings.route && !route.startsWith("detail") && route != Screen.Blacklist.route
+    } ?: true
 
     GradientBackground {
         Scaffold(
@@ -67,15 +71,20 @@ fun NotilogApp() {
             bottomBar = {
                 if (showBottomBar) {
                     GlassSurface(
-                        cornerRadius = 0.dp
+                        cornerRadius = 0.dp,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .navigationBarsPadding()
                     ) {
                         NavigationBar(
                             containerColor = Color.Transparent,
                             tonalElevation = 0.dp,
+                            modifier = Modifier.height(80.dp)
                         ) {
                             bottomNavItems.forEach { item ->
+                                val isSelected = currentDestination?.hierarchy?.any { it.route == item.screen.route } == true
                                 NavigationBarItem(
-                                    selected = currentDestination?.hierarchy?.any { it.route == item.screen.route } == true,
+                                    selected = isSelected,
                                     onClick = {
                                         navController.navigate(item.screen.route) {
                                             popUpTo(navController.graph.findStartDestination().id) {
@@ -85,8 +94,29 @@ fun NotilogApp() {
                                             restoreState = true
                                         }
                                     },
-                                    icon = { Icon(item.icon, contentDescription = item.label) },
-                                    label = { Text(item.label) }
+                                    icon = { 
+                                        Icon(
+                                            item.icon, 
+                                            contentDescription = item.label,
+                                            tint = if (isSelected) 
+                                                MaterialTheme.colorScheme.onSecondaryContainer 
+                                            else 
+                                                MaterialTheme.colorScheme.onSurfaceVariant
+                                        ) 
+                                    },
+                                    label = { 
+                                        Text(
+                                            item.label,
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = if (isSelected)
+                                                MaterialTheme.colorScheme.onSecondaryContainer
+                                            else
+                                                MaterialTheme.colorScheme.onSurfaceVariant
+                                        ) 
+                                    },
+                                    colors = NavigationBarItemDefaults.colors(
+                                        indicatorColor = MaterialTheme.colorScheme.secondaryContainer
+                                    )
                                 )
                             }
                         }

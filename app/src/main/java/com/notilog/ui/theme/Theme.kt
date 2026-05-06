@@ -24,47 +24,47 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import com.notilog.R
 
 private val LightColorScheme = lightColorScheme(
-    primary = Color(0xFF0059BB),
+    primary = Color(0xFF00428E),
     onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFF0070EA),
-    onPrimaryContainer = Color(0xFFFefcff),
+    primaryContainer = Color(0xFF0059BB),
+    onPrimaryContainer = Color(0xFFC3D5FF),
     secondary = Color(0xFF4854BB),
     onSecondary = Color(0xFFFFFFFF),
     secondaryContainer = Color(0xFF8692FD),
     onSecondaryContainer = Color(0xFF16238E),
-    tertiary = Color(0xFFA33800),
+    tertiary = Color(0xFF7C2900),
     onTertiary = Color(0xFFFFFFFF),
-    tertiaryContainer = Color(0xFFCD4800),
-    onTertiaryContainer = Color(0xFFFFFBFF),
+    tertiaryContainer = Color(0xFFA43800),
+    onTertiaryContainer = Color(0xFFFFC9B6),
     error = Color(0xFFBA1A1A),
     onError = Color(0xFFFFFFFF),
     errorContainer = Color(0xFFFFDAD6),
     onErrorContainer = Color(0xFF93000A),
-    background = Color(0xFFF7F9FC),
-    onBackground = Color(0xFF191C1E),
-    surface = Color(0xFFF7F9FC),
-    onSurface = Color(0xFF191C1E),
-    surfaceVariant = Color(0xFFE0E3E6),
-    onSurfaceVariant = Color(0xFF414754),
-    outline = Color(0xFF717786),
-    outlineVariant = Color(0xFFC1C6D7),
-    inverseSurface = Color(0xFF2D3133),
-    inverseOnSurface = Color(0xFFEFF1F4),
-    inversePrimary = Color(0xFFADC7FF),
-    surfaceTint = Color(0xFF005BC0),
+    background = Color(0xFFF9F9FF),
+    onBackground = Color(0xFF191C22),
+    surface = Color(0xFFF9F9FF),
+    onSurface = Color(0xFF191C22),
+    surfaceVariant = Color(0xFFE1E2EB),
+    onSurfaceVariant = Color(0xFF424752),
+    outline = Color(0xFF727784),
+    outlineVariant = Color(0xFFC2C6D5),
+    inverseSurface = Color(0xFF2E3037),
+    inverseOnSurface = Color(0xFFEFF0F9),
+    inversePrimary = Color(0xFFACC7FF),
+    surfaceTint = Color(0xFF075BBD),
 )
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Color(0xFFADC7FF),
-    onPrimary = Color(0xFF003061),
-    primaryContainer = Color(0xFF00468A),
-    onPrimaryContainer = Color(0xFFD8E2FF),
-    secondary = Color(0xFFBFC2FF),
-    onSecondary = Color(0xFF1B277A),
-    secondaryContainer = Color(0xFF333D91),
+    primary = Color(0xFFACC7FF),
+    onPrimary = Color(0xFF001A40),
+    primaryContainer = Color(0xFF004492),
+    onPrimaryContainer = Color(0xFFD7E2FF),
+    secondary = Color(0xFFBDC2FF),
+    onSecondary = Color(0xFF000965),
+    secondaryContainer = Color(0xFF2E3AA2),
     onSecondaryContainer = Color(0xFFDFE0FF),
     tertiary = Color(0xFFFFB59A),
-    onTertiary = Color(0xFF5A1900),
+    onTertiary = Color(0xFF370E00),
     tertiaryContainer = Color(0xFF802A00),
     onTertiaryContainer = Color(0xFFFFDBCE),
     error = Color(0xFFFFB4AB),
@@ -72,36 +72,36 @@ private val DarkColorScheme = darkColorScheme(
     errorContainer = Color(0xFF93000A),
     onErrorContainer = Color(0xFFFFDAD6),
     background = Color(0xFF0F1114),
-    onBackground = Color(0xFFE4E7FF),
+    onBackground = Color(0xFFF9F9FF),
     surface = Color(0xFF0F1114),
-    onSurface = Color(0xFFE4E7FF),
-    surfaceVariant = Color(0xFF414754),
-    onSurfaceVariant = Color(0xFFC1C6D7),
-    outline = Color(0xFF8B9099),
-    outlineVariant = Color(0xFF414754),
-    inverseSurface = Color(0xFFE4E7FF),
-    inverseOnSurface = Color(0xFF2D3133),
-    inversePrimary = Color(0xFF0059BB),
-    surfaceTint = Color(0xFFADC7FF),
+    onSurface = Color(0xFFF9F9FF),
+    surfaceVariant = Color(0xFF424752),
+    onSurfaceVariant = Color(0xFFC2C6D5),
+    outline = Color(0xFF8B919D),
+    outlineVariant = Color(0xFF424752),
+    inverseSurface = Color(0xFFF9F9FF),
+    inverseOnSurface = Color(0xFF2E3037),
+    inversePrimary = Color(0xFF00428E),
+    surfaceTint = Color(0xFFACC7FF),
 )
 
 val LocalGlassTokens = compositionLocalOf {
     GlassTokens(
-        glassBackground = Color(0x80FFFFFF),
-        glassBorder = Color(0x33FFFFFF),
-        glassElevation = 0.15f,
-        blurAmount = 16f,
-        cornerRadius = 16f,
-        ambientGlow = Color(0x330059BB),
+        glassBackground = Color(0xB2FFFFFF),
+        glassBorder = Color(0x80FFFFFF),
+        glassElevation = 4.dp,
+        blurAmount = 16.dp,
+        cornerRadius = 16.dp,
+        ambientGlow = Color(0x0D00428E),
     )
 }
 
 data class GlassTokens(
     val glassBackground: Color,
     val glassBorder: Color,
-    val glassElevation: Float,
-    val blurAmount: Float,
-    val cornerRadius: Float,
+    val glassElevation: Dp,
+    val blurAmount: Dp,
+    val cornerRadius: Dp,
     val ambientGlow: Color,
 )
 
@@ -112,7 +112,6 @@ val PlusJakartaSans = FontFamily(
     Font(R.font.plusjakartasans_semibold, FontWeight.SemiBold),
     Font(R.font.plusjakartasans_bold, FontWeight.Bold),
 )
-val InterFont = PlusJakartaSans
 
 @Composable
 fun NotilogTheme(
@@ -131,21 +130,21 @@ fun NotilogTheme(
 
     val glassTokens = if (darkTheme) {
         GlassTokens(
-            glassBackground = Color(0x18FFFFFF),
-            glassBorder = Color(0x18FFFFFF),
-            glassElevation = 0.1f,
-            blurAmount = 24f,
-            cornerRadius = 20f,
-            ambientGlow = Color(0x26ADC7FF),
+            glassBackground = Color(0xB20F1114),
+            glassBorder = Color(0x1AFFFFFF),
+            glassElevation = 2.dp,
+            blurAmount = 16.dp,
+            cornerRadius = 16.dp,
+            ambientGlow = Color(0x1AACC7FF),
         )
     } else {
         GlassTokens(
-            glassBackground = Color(0x75FFFFFF),
-            glassBorder = Color(0x45FFFFFF),
-            glassElevation = 0.18f,
-            blurAmount = 16f,
-            cornerRadius = 20f,
-            ambientGlow = Color(0x330059BB),
+            glassBackground = Color(0xB2FFFFFF),
+            glassBorder = Color(0x80FFFFFF),
+            glassElevation = 4.dp,
+            blurAmount = 16.dp,
+            cornerRadius = 16.dp,
+            ambientGlow = Color(0x0D00428E),
         )
     }
 
@@ -169,7 +168,7 @@ fun NotilogTheme(
     )
 }
 
-val NotilogTypography = androidx.compose.material3.Typography(
+val NotilogTypography = Typography(
     displayLarge = androidx.compose.ui.text.TextStyle(
         fontFamily = PlusJakartaSans,
         fontWeight = FontWeight.ExtraBold,
@@ -244,20 +243,17 @@ val NotilogTypography = androidx.compose.material3.Typography(
         fontWeight = FontWeight.Bold,
         fontSize = 14.sp,
         lineHeight = 20.sp,
-        letterSpacing = 0.05.sp,
     ),
     labelMedium = androidx.compose.ui.text.TextStyle(
         fontFamily = PlusJakartaSans,
         fontWeight = FontWeight.Bold,
         fontSize = 12.sp,
         lineHeight = 16.sp,
-        letterSpacing = 0.05.sp,
     ),
     labelSmall = androidx.compose.ui.text.TextStyle(
         fontFamily = PlusJakartaSans,
         fontWeight = FontWeight.Bold,
         fontSize = 12.sp,
         lineHeight = 16.sp,
-        letterSpacing = 0.05.sp,
     ),
 )

@@ -51,20 +51,9 @@ fun SettingsScreen(
 
     Scaffold(
         topBar = {
-            GlassSurface(cornerRadius = 0.dp) {
-                TopAppBar(
-                    title = {
-                        Text(
-                            "Settings",
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.headlineSmall
-                        )
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent
-                    )
-                )
-            }
+            AppHeader(
+                onSettingsClick = { /* Already here */ }
+            )
         },
         containerColor = Color.Transparent
     ) { padding ->
@@ -72,191 +61,204 @@ fun SettingsScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp)
+            contentPadding = PaddingValues(horizontal = 24.dp, vertical = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
         ) {
             item {
-                SectionHeader(
-                    title = "Cloud Backup",
-                    icon = Icons.Default.Settings,
-                    description = "Sync your data to Google Drive"
-                )
-                Spacer(Modifier.height(10.dp))
-                GlassCard(
-                    cornerRadius = 20.dp,
-                    shadowElevation = 8.dp
-                ) {
-                    Column(
-                        modifier = Modifier.padding(18.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
-                    ) {
-                        if (googleAccount != null) {
-                            StatusBadge(
-                                text = "Connected as ${googleAccount?.email}",
-                                color = Color(0xFF34D399)
-                            )
-                        }
-                        Button(
-                            onClick = {
-                                signInLauncher.launch(viewModel.getGoogleSignInClient().signInIntent)
-                            },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = MaterialTheme.shapes.medium
-                        ) {
-                            Text(if (googleAccount == null) "Connect Google Drive" else "Switch Account")
-                        }
-                        OutlinedButton(
-                            onClick = { viewModel.runBackupNow() },
-                            enabled = googleAccount != null,
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = MaterialTheme.shapes.medium
-                        ) { Text("Sync Now") }
-                        Text(
-                            "Last sync: Never",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
+                Column {
+                    Text(
+                        "Settings",
+                        style = MaterialTheme.typography.displayLarge.copy(fontSize = 34.sp),
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.ExtraBold,
+                        letterSpacing = (-0.02).sp
+                    )
+                    Text(
+                        "Manage your data, privacy, and app preferences.",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
                 }
             }
+
             item {
-                SectionHeader(
-                    title = "Data Retention",
-                    icon = Icons.Default.Delete,
-                    description = "Manage auto-cleanup and storage"
-                )
-                Spacer(Modifier.height(10.dp))
-                GlassCard(
-                    cornerRadius = 20.dp,
-                    shadowElevation = 8.dp
-                ) {
-                    Column(
-                        modifier = Modifier.padding(18.dp),
-                        verticalArrangement = Arrangement.spacedBy(14.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                "Auto-cleanup",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurface,
-                                fontWeight = FontWeight.Medium
-                            )
+                SettingsBanner()
+            }
+
+            item {
+                SettingsSection(title = "Privacy") {
+                    SettingsItem(
+                        icon = Icons.Default.Delete, // auto_delete substitute
+                        title = "Auto-delete logs",
+                        subtitle = "Automatically remove logs older than $retentionDays days",
+                        action = {
                             Switch(
                                 checked = autoCleanup,
                                 onCheckedChange = viewModel::setAutoCleanup
                             )
                         }
-                        if (autoCleanup) {
-                            GlassDivider()
-                            Text(
-                                "Retention period",
-                                style = MaterialTheme.typography.bodyMedium,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                listOf(30, 60, 90).forEach { days ->
-                                    FilterChip(
-                                        selected = retentionDays == days,
-                                        onClick = { viewModel.setRetentionDays(days) },
-                                        label = { Text("$days days") },
-                                        colors = FilterChipDefaults.filterChipColors(
-                                            selectedContainerColor = MaterialTheme.colorScheme.primary,
-                                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary,
-                                        )
-                                    )
-                                }
-                            }
+                    )
+                }
+            }
+
+            item {
+                SettingsSection(title = "Data Management") {
+                    SettingsItem(
+                        icon = Icons.Default.Refresh, // download substitute
+                        title = "Export Data",
+                        subtitle = "Download all your logs as a CSV file",
+                        onClick = { /* TODO */ }
+                    )
+                    SettingsItem(
+                        icon = Icons.Default.Warning, // delete_forever substitute
+                        title = "Clear All Data",
+                        subtitle = "Permanently delete all stored notifications",
+                        titleColor = MaterialTheme.colorScheme.error,
+                        onClick = { viewModel.runCleanupNow() }
+                    )
+                }
+            }
+
+            item {
+                SettingsSection(title = "Exclusion List") {
+                    SettingsItem(
+                        icon = Icons.Default.List,
+                        title = "Manage Blocked Apps",
+                        subtitle = "Notifications from these apps will not be logged",
+                        onClick = onManageBlacklist
+                    )
+                }
+            }
+
+            item {
+                SettingsSection(title = "Appearance") {
+                    SettingsItem(
+                        icon = Icons.Default.Settings, // dark_mode substitute
+                        title = "Dark Theme",
+                        subtitle = "Switch between light and dark mode",
+                        action = {
+                            // Theme state usually managed globally, placeholder toggle
+                            Switch(checked = false, onCheckedChange = {})
                         }
-                        OutlinedButton(
-                            onClick = { viewModel.runCleanupNow() },
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = MaterialTheme.shapes.medium
-                        ) { Text("Clean Up Now") }
-                    }
+                    )
                 }
             }
+
             item {
-                AppExclusionSection(
-                    onAddClick = onManageBlacklist
-                )
-            }
-            item {
-                SectionHeader(
-                    title = "System",
-                    icon = Icons.Default.Settings,
-                    description = "Notification access and permissions"
-                )
-                Spacer(Modifier.height(10.dp))
-                GlassCard(cornerRadius = 20.dp, shadowElevation = 8.dp) {
-                    Button(
-                        onClick = {
-                            context.startActivity(
-                                Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
-                            )
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(14.dp),
-                        shape = MaterialTheme.shapes.medium
-                    ) {
-                        Text("Check Notification Permission")
-                    }
+                Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    Text(
+                        "Notilog Version 2.4.1",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                    )
                 }
+            }
+            
+            item {
+                Spacer(Modifier.height(80.dp))
             }
         }
     }
 }
 
 @Composable
-private fun SectionHeader(
+fun SettingsBanner() {
+    GlassCard(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(140.dp),
+        cornerRadius = 24.dp
+    ) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(64.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    Icons.Default.Settings,
+                    contentDescription = null,
+                    modifier = Modifier.size(32.dp),
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SettingsSection(
     title: String,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+            title,
+            style = MaterialTheme.typography.titleLarge,
+            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.Bold,
+            modifier = Modifier.padding(horizontal = 4.dp)
+        )
+        GlassCard(cornerRadius = 24.dp) {
+            Column(modifier = Modifier.padding(vertical = 8.dp)) {
+                content()
+            }
+        }
+    }
+}
+
+@Composable
+fun SettingsItem(
     icon: androidx.compose.ui.graphics.vector.ImageVector,
-    description: String,
-    modifier: Modifier = Modifier
+    title: String,
+    subtitle: String,
+    titleColor: Color = MaterialTheme.colorScheme.onSurface,
+    onClick: (() -> Unit)? = null,
+    action: (@Composable () -> Unit)? = null
 ) {
     Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.CenterVertically
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = onClick != null) { onClick?.invoke() }
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         Box(
             modifier = Modifier
-                .size(36.dp)
-                .clip(MaterialTheme.shapes.small)
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
-                            Color.Transparent
-                        )
-                    )
-                ),
+                .size(40.dp)
+                .clip(CircleShape)
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
             contentAlignment = Alignment.Center
         ) {
             Icon(
                 icon,
                 contentDescription = null,
-                modifier = Modifier.size(18.dp),
-                tint = MaterialTheme.colorScheme.primary
+                modifier = Modifier.size(20.dp),
+                tint = if (titleColor == MaterialTheme.colorScheme.error) titleColor else MaterialTheme.colorScheme.primary
             )
         }
-        Column {
+        
+        Column(modifier = Modifier.weight(1f)) {
             Text(
                 title,
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = MaterialTheme.colorScheme.onSurface
+                color = titleColor,
+                fontWeight = FontWeight.SemiBold
             )
             Text(
-                description,
+                subtitle,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
+        
+        action?.invoke()
     }
 }

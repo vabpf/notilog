@@ -46,9 +46,9 @@ fun GradientBackground(
     val offsetY3 = remember { Animatable(0f) }
 
     LaunchedEffect(Unit) {
-        val duration = 12000
+        val duration = 15000
         offsetX1.animateTo(
-            targetValue = 40f,
+            targetValue = 60f,
             animationSpec = infiniteRepeatable(
                 animation = tween(duration, easing = FastOutSlowInEasing),
                 repeatMode = RepeatMode.Reverse
@@ -57,45 +57,45 @@ fun GradientBackground(
     }
     LaunchedEffect(Unit) {
         offsetY1.animateTo(
-            targetValue = -30f,
+            targetValue = -40f,
             animationSpec = infiniteRepeatable(
-                animation = tween(12000, easing = FastOutSlowInEasing),
+                animation = tween(15000, easing = FastOutSlowInEasing),
                 repeatMode = RepeatMode.Reverse
             )
         )
     }
     LaunchedEffect(Unit) {
         offsetX2.animateTo(
-            targetValue = -35f,
+            targetValue = -50f,
             animationSpec = infiniteRepeatable(
-                animation = tween(15000, easing = FastOutSlowInEasing),
+                animation = tween(18000, easing = FastOutSlowInEasing),
                 repeatMode = RepeatMode.Reverse
             )
         )
     }
     LaunchedEffect(Unit) {
         offsetY2.animateTo(
-            targetValue = 45f,
+            targetValue = 60f,
             animationSpec = infiniteRepeatable(
-                animation = tween(15000, easing = FastOutSlowInEasing),
+                animation = tween(18000, easing = FastOutSlowInEasing),
                 repeatMode = RepeatMode.Reverse
             )
         )
     }
     LaunchedEffect(Unit) {
         offsetX3.animateTo(
-            targetValue = 25f,
+            targetValue = 40f,
             animationSpec = infiniteRepeatable(
-                animation = tween(18000, easing = FastOutSlowInEasing),
+                animation = tween(22000, easing = FastOutSlowInEasing),
                 repeatMode = RepeatMode.Reverse
             )
         )
     }
     LaunchedEffect(Unit) {
         offsetY3.animateTo(
-            targetValue = 35f,
+            targetValue = 50f,
             animationSpec = infiniteRepeatable(
-                animation = tween(18000, easing = FastOutSlowInEasing),
+                animation = tween(22000, easing = FastOutSlowInEasing),
                 repeatMode = RepeatMode.Reverse
             )
         )
@@ -108,9 +108,8 @@ fun GradientBackground(
                 if (darkTheme) {
                     Brush.linearGradient(
                         colors = listOf(
-                            Color(0xFF0A0520),
-                            Color(0xFF150A30),
-                            Color(0xFF0A0520),
+                            Color(0xFF0F1114),
+                            Color(0xFF191C22),
                         ),
                         start = Offset(0f, 0f),
                         end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY),
@@ -118,9 +117,8 @@ fun GradientBackground(
                 } else {
                     Brush.linearGradient(
                         colors = listOf(
-                            Color(0xFFF5F0FF),
-                            Color(0xFFEDE5FF),
-                            Color(0xFFF0E8FF),
+                            Color(0xFFF9F9FF),
+                            Color(0xFFE7E8F0),
                         ),
                         start = Offset(0f, 0f),
                         end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY),
@@ -146,26 +144,26 @@ private fun AnimatedBlobs(
     darkTheme: Boolean
 ) {
     val modifier = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        Modifier.fillMaxSize().blur(80.dp)
+        Modifier.fillMaxSize().blur(100.dp)
     } else {
         Modifier.fillMaxSize()
     }
     
     Canvas(modifier = modifier) {
-        val blobSize = size.minDimension * 0.7f
+        val blobSize = size.minDimension * 0.8f
 
         drawCircle(
             brush = Brush.radialGradient(
                 colors = if (darkTheme) {
                     listOf(
-                        Color(0xFFADC7FF).copy(alpha = 0.35f),
-                        Color(0xFFADC7FF).copy(alpha = 0.15f),
+                        Color(0xFFACC7FF).copy(alpha = 0.15f),
+                        Color(0xFFACC7FF).copy(alpha = 0.05f),
                         Color.Transparent
                     )
                 } else {
                     listOf(
-                        Color(0xFF0059BB).copy(alpha = 0.25f),
-                        Color(0xFF0059BB).copy(alpha = 0.12f),
+                        Color(0xFF00428E).copy(alpha = 0.12f),
+                        Color(0xFF00428E).copy(alpha = 0.04f),
                         Color.Transparent
                     )
                 },
@@ -179,39 +177,20 @@ private fun AnimatedBlobs(
             brush = Brush.radialGradient(
                 colors = if (darkTheme) {
                     listOf(
-                        Color(0xFF4854BB).copy(alpha = 0.25f),
-                        Color(0xFF4854BB).copy(alpha = 0.10f),
+                        Color(0xFF4854BB).copy(alpha = 0.1f),
+                        Color(0xFF4854BB).copy(alpha = 0.03f),
                         Color.Transparent
                     )
                 } else {
                     listOf(
-                        Color(0xFFA33800).copy(alpha = 0.18f),
                         Color(0xFFA33800).copy(alpha = 0.08f),
+                        Color(0xFFA33800).copy(alpha = 0.02f),
                         Color.Transparent
                     )
                 },
             ),
-            radius = blobSize * 0.85f,
+            radius = blobSize * 0.9f,
             center = center + offsets.second,
-        )
-        drawCircle(
-            brush = Brush.radialGradient(
-                colors = if (darkTheme) {
-                    listOf(
-                        Color(0xFFFFB59A).copy(alpha = 0.18f),
-                        Color(0xFFFFB59A).copy(alpha = 0.06f),
-                        Color.Transparent
-                    )
-                } else {
-                    listOf(
-                        Color(0xFFCD4800).copy(alpha = 0.14f),
-                        Color(0xFFCD4800).copy(alpha = 0.05f),
-                        Color.Transparent
-                    )
-                },
-            ),
-            radius = blobSize * 0.6f,
-            center = center + offsets.third,
         )
     }
 }
@@ -220,31 +199,27 @@ private fun AnimatedBlobs(
 fun GlassCard(
     modifier: Modifier = Modifier,
     onClick: (() -> Unit)? = null,
-    cornerRadius: Dp = 16.dp,
+    cornerRadius: Dp? = null,
     borderColor: Color? = null,
     containerColor: Color? = null,
-    shadowElevation: Dp = 8.dp,
+    shadowElevation: Dp? = null,
     borderGlow: Boolean = false,
     content: @Composable () -> Unit
 ) {
     val glassTokens = LocalGlassTokens.current
-    val shape = RoundedCornerShape(cornerRadius)
+    val actualRadius = cornerRadius ?: glassTokens.cornerRadius
+    val shape = RoundedCornerShape(actualRadius)
     val bgColor = containerColor ?: glassTokens.glassBackground
+    val elevation = shadowElevation ?: glassTokens.glassElevation
     val isDark = androidx.compose.foundation.isSystemInDarkTheme()
 
-    val shadowColor = if (isDark) Color(0x000000).copy(alpha = 0.4f) else Color(0x000000).copy(alpha = 0.08f)
-    val glowBorder = if (borderGlow && isDark) {
-        glassTokens.glassBorder.copy(alpha = 0.3f)
-    } else if (borderGlow) {
-        glassTokens.glassBorder.copy(alpha = 0.5f)
-    } else {
-        borderColor ?: glassTokens.glassBorder
-    }
+    val shadowColor = if (isDark) Color(0xFF000000).copy(alpha = 0.3f) else Color(0xFF00428E).copy(alpha = 0.05f)
+    val borderCol = borderColor ?: glassTokens.glassBorder
 
     Card(
         modifier = modifier
             .shadow(
-                elevation = shadowElevation,
+                elevation = elevation,
                 shape = shape,
                 ambientColor = shadowColor,
                 spotColor = shadowColor,
@@ -252,7 +227,7 @@ fun GlassCard(
             .clip(shape)
             .border(
                 width = 1.dp,
-                color = glowBorder,
+                color = borderCol,
                 shape = shape,
             )
             .then(
@@ -274,9 +249,9 @@ fun GlassCard(
                     if (borderGlow) {
                         Modifier.drawBehind {
                             drawRoundRect(
-                                color = if (isDark) Color(0xFFADC7FF).copy(alpha = 0.06f) else Color(0xFF0059BB).copy(alpha = 0.04f),
+                                color = if (isDark) Color(0xFFACC7FF).copy(alpha = 0.05f) else Color(0xFF00428E).copy(alpha = 0.03f),
                                 size = size,
-                                cornerRadius = androidx.compose.ui.geometry.CornerRadius(cornerRadius.toPx()),
+                                cornerRadius = androidx.compose.ui.geometry.CornerRadius(actualRadius.toPx()),
                             )
                         }
                     } else {
@@ -292,19 +267,19 @@ fun GlassCard(
 @Composable
 fun GlassSurface(
     modifier: Modifier = Modifier,
-    cornerRadius: Dp = 16.dp,
+    cornerRadius: Dp? = null,
     content: @Composable () -> Unit
 ) {
     val glassTokens = LocalGlassTokens.current
-    val shape = RoundedCornerShape(cornerRadius)
-    val isDark = androidx.compose.foundation.isSystemInDarkTheme()
+    val actualRadius = cornerRadius ?: glassTokens.cornerRadius
+    val shape = RoundedCornerShape(actualRadius)
 
     Box(
         modifier = modifier
             .clip(shape)
             .border(
                 width = 1.dp,
-                color = glassTokens.glassBorder.copy(alpha = if (isDark) 0.25f else 0.45f),
+                color = glassTokens.glassBorder,
                 shape = shape,
             )
             .background(glassTokens.glassBackground)
