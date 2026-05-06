@@ -1,8 +1,7 @@
 package com.notilog
 
 import android.app.Application
-import androidx.hilt.work.HiltWorkerFactory
-import androidx.work.Configuration
+import android.util.Log
 import com.notilog.data.repository.CategoryRepository
 import dagger.hilt.android.HiltAndroidApp
 import kotlinx.coroutines.CoroutineScope
@@ -12,10 +11,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltAndroidApp
-class NotilogApplication : Application(), Configuration.Provider {
-
-    @Inject
-    lateinit var workerFactory: HiltWorkerFactory
+class NotilogApplication : Application() {
 
     @Inject
     lateinit var categoryRepository: CategoryRepository
@@ -24,13 +20,17 @@ class NotilogApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        Log.d("NotilogApp", "Application onCreate START")
+        
         applicationScope.launch {
-            categoryRepository.loadCategories()
+            try {
+                categoryRepository.loadCategories()
+                Log.d("NotilogApp", "Categories loaded OK")
+            } catch (e: Throwable) {
+                Log.e("NotilogApp", "Category loading failed", e)
+            }
         }
+        
+        Log.d("NotilogApp", "Application onCreate END")
     }
-
-    override fun getWorkManagerConfiguration(): Configuration =
-        Configuration.Builder()
-            .setWorkerFactory(workerFactory)
-            .build()
 }

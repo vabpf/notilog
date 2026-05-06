@@ -1,5 +1,6 @@
 package com.notilog.ui.theme
 
+import android.os.Build
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.RepeatMode
@@ -144,11 +145,13 @@ private fun AnimatedBlobs(
     offsets: Triple<Offset, Offset, Offset>,
     darkTheme: Boolean
 ) {
-    Canvas(
-        modifier = Modifier
-            .fillMaxSize()
-            .blur(80.dp)
-    ) {
+    val modifier = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        Modifier.fillMaxSize().blur(80.dp)
+    } else {
+        Modifier.fillMaxSize()
+    }
+    
+    Canvas(modifier = modifier) {
         val blobSize = size.minDimension * 0.7f
 
         drawCircle(

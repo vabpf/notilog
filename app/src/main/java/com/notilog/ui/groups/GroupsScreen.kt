@@ -28,19 +28,18 @@ import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.CreditCard
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Face
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.List
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.ui.unit.dp
 
 private val categoryIcons = mapOf(
-    "Social" to Icons.Default.Person,
-    "Banking" to Icons.Default.CreditCard,
-    "Shopping" to Icons.Default.ShoppingCart,
+    "Social" to Icons.Default.Face,
+    "Banking" to Icons.Default.Check,
+    "Shopping" to Icons.Default.List,
     "System" to Icons.Default.Settings,
-    "Uncategorized" to Icons.Default.Star,
+    "Uncategorized" to Icons.Default.Info,
 )
 
 private val categoryGradients = mapOf(
@@ -264,7 +263,7 @@ private fun CategoryCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = categoryIcons[category] ?: Icons.Default.PushPin,
+                        imageVector = categoryIcons[category] ?: Icons.Default.Info,
                         contentDescription = category,
                         tint = Color.White,
                         modifier = Modifier.size(24.dp)

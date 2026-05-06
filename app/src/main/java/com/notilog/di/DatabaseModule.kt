@@ -1,6 +1,7 @@
 package com.notilog.di
 
 import android.content.Context
+import android.util.Log
 import androidx.room.Room
 import com.notilog.data.local.BlacklistedAppDao
 import com.notilog.data.local.MIGRATION_1_2
@@ -20,12 +21,24 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): NotilogDatabase {
-        return Room.databaseBuilder(
-            context,
-            NotilogDatabase::class.java,
-            "notilog.db"
-        ).addMigrations(MIGRATION_1_2)
-            .build()
+        return try {
+            Room.databaseBuilder(
+                context,
+                NotilogDatabase::class.java,
+                "notilog.db"
+            )
+                .addMigrations(MIGRATION_1_2)
+                .build()
+        } catch (e: Exception) {
+            Log.e("DatabaseModule", "Error creating database, falling back", e)
+            Room.databaseBuilder(
+                context,
+                NotilogDatabase::class.java,
+                "notilog.db"
+            )
+                .fallbackToDestructiveMigration()
+                .build()
+        }
     }
 
     @Provides
