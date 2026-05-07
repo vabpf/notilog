@@ -4,9 +4,9 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
-import androidx.compose.foundation.border
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -17,7 +17,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
@@ -28,14 +27,15 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.notilog.data.local.NotificationEntity
-import com.notilog.ui.theme.GlassCard
-import com.notilog.ui.theme.GlassSurface
 import com.notilog.ui.theme.StatusBadge
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -55,217 +55,259 @@ fun DetailScreen(
     val packageName = versions.firstOrNull()?.packageName ?: ""
     val isBlacklisted by viewModel.isBlacklisted(packageName).collectAsState(initial = false)
 
+    var headerBottomPx by remember { mutableStateOf(0) }
+    val density = LocalDensity.current
+    val headerBottomDp = with(density) { headerBottomPx.toDp() }
+
     Scaffold(
-        topBar = {
-            GlassSurface(cornerRadius = 0.dp) {
-                TopAppBar(
-                    title = {
-                        Text(
-                            appName,
-                            fontWeight = FontWeight.Bold,
-                            style = MaterialTheme.typography.headlineSmall
-                        )
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(
-                                imageVector = Icons.Default.ArrowBack,
-                                contentDescription = "Back"
-                            )
-                        }
-                    },
-                    actions = {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            if (isBlacklisted) {
-                                StatusBadge(text = "Blocked", color = MaterialTheme.colorScheme.error)
-                            }
-                            Text("Block", style = MaterialTheme.typography.labelMedium)
-                            Switch(
-                                checked = isBlacklisted,
-                                onCheckedChange = { viewModel.toggleBlacklist(packageName) }
-                            )
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent
-                    )
-                )
-            }
-        },
+        topBar = {},
         containerColor = Color.Transparent
-    ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
-            item {
-                GlassCard(
-                    cornerRadius = 24.dp,
-                    shadowElevation = 12.dp,
-                    borderGlow = true
+    ) { _ ->
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (headerBottomPx > 0) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = headerBottomDp - 12.dp),
+                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                    color = MaterialTheme.colorScheme.surface
                 ) {
-                    Column(
-                        modifier = Modifier.padding(20.dp),
+                    LazyColumn(
+                        contentPadding = PaddingValues(
+                            start = 16.dp,
+                            end = 16.dp,
+                            top = 16.dp,
+                            bottom = 120.dp
+                        ),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            Box {
-                                DetailAppIcon(packageName)
-                                if (versions.size > 1) {
+                        item {
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                shadowElevation = 2.dp
+                            ) {
+                                Column(
+                                    modifier = Modifier.padding(20.dp),
+                                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(16.dp)
+                                    ) {
+                                        Box {
+                                            DetailAppIcon(packageName)
+                                            if (versions.size > 1) {
+                                                Box(
+                                                    modifier = Modifier
+                                                        .align(Alignment.TopEnd)
+                                                        .offset(x = (-4).dp, y = 4.dp)
+                                                        .size(24.dp)
+                                                        .clip(CircleShape)
+                                                        .background(MaterialTheme.colorScheme.primary)
+                                                        .shadow(
+                                                            elevation = 4.dp,
+                                                            shape = CircleShape,
+                                                            ambientColor = MaterialTheme.colorScheme.primary.copy(
+                                                                alpha = 0.3f
+                                                            ),
+                                                            spotColor = MaterialTheme.colorScheme.primary.copy(
+                                                                alpha = 0.4f
+                                                            ),
+                                                        ),
+                                                    contentAlignment = Alignment.Center
+                                                ) {
+                                                    Text(
+                                                        "${versions.size}",
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = MaterialTheme.colorScheme.onPrimary,
+                                                        fontWeight = FontWeight.Bold
+                                                    )
+                                                }
+                                            }
+                                        }
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(
+                                                appName,
+                                                style = MaterialTheme.typography.headlineSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+                                            Text(
+                                                packageName,
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
                                     Box(
                                         modifier = Modifier
-                                            .align(Alignment.TopEnd)
-                                            .offset(x = (-4).dp, y = 4.dp)
-                                            .size(24.dp)
-                                            .clip(CircleShape)
-                                            .background(MaterialTheme.colorScheme.primary)
-                                            .shadow(
-                                                elevation = 4.dp,
-                                                shape = CircleShape,
-                                                ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
-                                                spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
-                                            ),
+                                            .fillMaxWidth()
+                                            .height(1.dp)
+                                            .background(
+                                                Brush.horizontalGradient(
+                                                    colors = listOf(
+                                                        Color.Transparent,
+                                                        MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                                                        Color.Transparent
+                                                    )
+                                                )
+                                            )
+                                    )
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Text(
+                                            "${versions.size} version(s) recorded",
+                                            style = MaterialTheme.typography.labelMedium,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            fontWeight = FontWeight.SemiBold
+                                        )
+                                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            IconButton(onClick = {
+                                                val clipboard = context.getSystemService(
+                                                    Context.CLIPBOARD_SERVICE
+                                                ) as ClipboardManager
+                                                val clip = ClipData.newPlainText(
+                                                    "Notification",
+                                                    versions.joinToString("\n---\n") { it.textContent ?: "" }
+                                                )
+                                                clipboard.setPrimaryClip(clip)
+                                            }) {
+                                                Icon(
+                                                    Icons.Default.Info,
+                                                    contentDescription = "Copy all",
+                                                    modifier = Modifier.size(18.dp),
+                                                    tint = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                            IconButton(onClick = {
+                                                val intent = Intent(Intent.ACTION_SEND).apply {
+                                                    type = "text/plain"
+                                                    putExtra(
+                                                        Intent.EXTRA_TEXT,
+                                                        versions.joinToString("\n---\n") { it.textContent ?: "" }
+                                                    )
+                                                }
+                                                context.startActivity(
+                                                    Intent.createChooser(intent, "Share all versions")
+                                                )
+                                            }) {
+                                                Icon(
+                                                    Icons.Default.Share,
+                                                    contentDescription = "Share all",
+                                                    modifier = Modifier.size(18.dp),
+                                                    tint = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
+                        if (versions.isEmpty()) {
+                            item {
+                                Surface(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(16.dp),
+                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    shadowElevation = 2.dp
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(140.dp)
+                                            .padding(16.dp),
                                         contentAlignment = Alignment.Center
                                     ) {
                                         Text(
-                                            "${versions.size}",
-                                            style = MaterialTheme.typography.labelSmall,
-                                            color = MaterialTheme.colorScheme.onPrimary,
-                                            fontWeight = FontWeight.Bold
+                                            "No history found",
+                                            style = MaterialTheme.typography.bodyLarge,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
                                         )
                                     }
                                 }
                             }
-                            Column(modifier = Modifier.weight(1f)) {
-                                Text(
-                                    appName,
-                                    style = MaterialTheme.typography.headlineSmall,
-                                    fontWeight = FontWeight.Bold,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                                Text(
-                                    packageName,
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
+                        } else {
+                            items(versions) { version ->
+                                VersionCard(version, isLatest = version == versions.first())
                             }
                         }
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(1.dp)
-                                .background(
-                                    Brush.horizontalGradient(
-                                        colors = listOf(
-                                            Color.Transparent,
-                                            MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
-                                            Color.Transparent
-                                        )
-                                    )
-                                )
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Text(
-                                "${versions.size} version(s) recorded",
-                                style = MaterialTheme.typography.labelMedium,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                IconButton(onClick = {
-                                    val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                    val clip = ClipData.newPlainText(
-                                        "Notification",
-                                        versions.joinToString("\n---\n") { it.textContent ?: "" }
-                                    )
-                                    clipboard.setPrimaryClip(clip)
-                                }) {
+
+                        item {
+                            Surface(
+                                shape = RoundedCornerShape(16.dp),
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                shadowElevation = 2.dp
+                            ) {
+                                Button(
+                                    onClick = {
+                                        viewModel.deleteAllVersions(systemId, tag)
+                                        onBack()
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(12.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = MaterialTheme.colorScheme.error
+                                    ),
+                                    shape = RoundedCornerShape(12.dp)
+                                ) {
                                     Icon(
-                                        Icons.Default.Info,
-                                        contentDescription = "Copy all",
-                                        modifier = Modifier.size(18.dp),
-                                        tint = MaterialTheme.colorScheme.primary
+                                        Icons.Default.Delete,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
                                     )
-                                }
-                                IconButton(onClick = {
-                                    val intent = Intent(Intent.ACTION_SEND).apply {
-                                        type = "text/plain"
-                                        putExtra(
-                                            Intent.EXTRA_TEXT,
-                                            versions.joinToString("\n---\n") { it.textContent ?: "" }
-                                        )
-                                    }
-                                    context.startActivity(
-                                        Intent.createChooser(intent, "Share all versions")
-                                    )
-                                }) {
-                                    Icon(
-                                        Icons.Default.Share,
-                                        contentDescription = "Share all",
-                                        modifier = Modifier.size(18.dp),
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
+                                    Spacer(Modifier.width(8.dp))
+                                    Text("Delete All Versions")
                                 }
                             }
                         }
                     }
                 }
             }
-            if (versions.isEmpty()) {
-                item {
-                    GlassCard(
-                        modifier = Modifier.fillMaxWidth(),
-                        cornerRadius = 20.dp
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(140.dp)
-                                .padding(16.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                "No history found",
-                                style = MaterialTheme.typography.bodyLarge,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
+
+            // Floating header: back | app name (centered) | block toggle
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(top = 12.dp, bottom = 16.dp)
+                    .onGloballyPositioned { coords ->
+                        headerBottomPx =
+                            (coords.positionInRoot().y + coords.size.height).toInt()
+                    },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(
+                        imageVector = Icons.Default.ArrowBack,
+                        contentDescription = "Back"
+                    )
                 }
-            } else {
-                items(versions) { version ->
-                    VersionCard(version, isLatest = version == versions.first())
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    Text(
+                        appName,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.headlineSmall
+                    )
                 }
-            }
-            item {
-                GlassCard(cornerRadius = 16.dp) {
-                    Button(
-                        onClick = { viewModel.deleteAllVersions(systemId, tag); onBack() },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = MaterialTheme.colorScheme.error
-                        ),
-                        shape = RoundedCornerShape(12.dp)
-                    ) {
-                        Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(Modifier.width(8.dp))
-                        Text("Delete All Versions")
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    modifier = Modifier.padding(end = 8.dp)
+                ) {
+                    if (isBlacklisted) {
+                        StatusBadge(text = "Blocked", color = MaterialTheme.colorScheme.error)
                     }
+                    Text("Block", style = MaterialTheme.typography.labelMedium)
+                    Switch(
+                        checked = isBlacklisted,
+                        onCheckedChange = { viewModel.toggleBlacklist(packageName) }
+                    )
                 }
             }
         }
@@ -318,10 +360,10 @@ fun DetailAppIcon(packageName: String) {
 @Composable
 private fun VersionCard(version: NotificationEntity, isLatest: Boolean) {
     val context = LocalContext.current
-    GlassCard(
-        cornerRadius = 20.dp,
-        shadowElevation = if (isLatest) 10.dp else 4.dp,
-        borderGlow = isLatest
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        shadowElevation = 2.dp
     ) {
         Column {
             if (isLatest) {
@@ -337,60 +379,76 @@ private fun VersionCard(version: NotificationEntity, isLatest: Boolean) {
                     .padding(top = if (isLatest) 20.dp else 0.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    formatDateTime(version.postTime),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = if (isLatest) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontWeight = if (isLatest) FontWeight.SemiBold else FontWeight.Medium
-                )
-                Row {
-                    IconButton(onClick = {
-                        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                        val clip = ClipData.newPlainText("Notification", version.textContent ?: "")
-                        clipboard.setPrimaryClip(clip)
-                    }) {
-                        Icon(Icons.Default.Info, contentDescription = "Copy", modifier = Modifier.size(18.dp))
-                    }
-                    IconButton(onClick = {
-                        val intent = Intent(Intent.ACTION_SEND).apply {
-                            type = "text/plain"
-                            putExtra(Intent.EXTRA_TEXT, version.textContent ?: "")
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        formatDateTime(version.postTime),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (isLatest) MaterialTheme.colorScheme.primary
+                                else MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontWeight = if (isLatest) FontWeight.SemiBold else FontWeight.Medium
+                    )
+                    Row {
+                        IconButton(onClick = {
+                            val clipboard = context.getSystemService(
+                                Context.CLIPBOARD_SERVICE
+                            ) as ClipboardManager
+                            val clip = ClipData.newPlainText(
+                                "Notification",
+                                version.textContent ?: ""
+                            )
+                            clipboard.setPrimaryClip(clip)
+                        }) {
+                            Icon(
+                                Icons.Default.Info,
+                                contentDescription = "Copy",
+                                modifier = Modifier.size(18.dp)
+                            )
                         }
-                        context.startActivity(Intent.createChooser(intent, "Share notification"))
-                    }) {
-                        Icon(Icons.Default.Share, contentDescription = "Share", modifier = Modifier.size(18.dp))
+                        IconButton(onClick = {
+                            val intent = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_TEXT, version.textContent ?: "")
+                            }
+                            context.startActivity(
+                                Intent.createChooser(intent, "Share notification")
+                            )
+                        }) {
+                            Icon(
+                                Icons.Default.Share,
+                                contentDescription = "Share",
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
                     }
                 }
-            }
-            if (!version.title.isNullOrBlank()) {
-                Text(
-                    version.title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-            }
-            if (!version.textContent.isNullOrBlank()) {
-                SelectionContainer {
+                if (!version.title.isNullOrBlank()) {
                     Text(
-                        version.textContent,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        version.title,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                }
+                if (!version.textContent.isNullOrBlank()) {
+                    SelectionContainer {
+                        Text(
+                            version.textContent,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+                if (version.isDismissed) {
+                    StatusBadge(
+                        text = "Dismissed",
+                        color = MaterialTheme.colorScheme.error
                     )
                 }
             }
-            if (version.isDismissed) {
-                StatusBadge(
-                    text = "Dismissed",
-                    color = MaterialTheme.colorScheme.error
-                )
-            }
-        }
         }
     }
 }

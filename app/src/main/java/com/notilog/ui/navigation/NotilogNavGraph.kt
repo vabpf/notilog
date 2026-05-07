@@ -16,14 +16,11 @@ import androidx.navigation.navArgument
 import com.notilog.ui.detail.DetailScreen
 import com.notilog.ui.feed.FeedScreen
 import com.notilog.ui.feed.FeedViewModel
-import com.notilog.ui.groups.GroupsScreen
 import com.notilog.ui.settings.BlacklistScreen
 import com.notilog.ui.settings.SettingsScreen
 
 sealed class Screen(val route: String) {
     object Feed : Screen("feed")
-    object Filters : Screen("filters")
-    object Rules : Screen("rules")
     object Insights : Screen("insights")
     object Settings : Screen("settings")
     object Blacklist : Screen("blacklist")
@@ -60,23 +57,17 @@ fun NotilogNavGraph(
                 navController = navController
             )
         }
-        composable(Screen.Filters.route) {
-            // Placeholder for Advanced Filters
-            com.notilog.ui.feed.AdvancedFilterScreen(
-                onBack = { navController.popBackStack() }
-            )
-        }
-        composable(Screen.Rules.route) {
-            com.notilog.ui.rules.RulesScreen()
-        }
         composable(Screen.Insights.route) {
-            com.notilog.ui.insights.InsightsScreen()
+            com.notilog.ui.insights.InsightsScreen(
+                onSettingsClick = { navController.navigate(Screen.Settings.route) }
+            )
         }
         composable(Screen.Settings.route) {
             SettingsScreen(
                 onManageBlacklist = {
                     navController.navigate(Screen.Blacklist.route)
-                }
+                },
+                onBack = { navController.popBackStack() }
             )
         }
         composable(Screen.Blacklist.route) {

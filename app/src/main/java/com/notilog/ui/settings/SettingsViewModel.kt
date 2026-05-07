@@ -1,16 +1,12 @@
 package com.notilog.ui.settings
 
 import android.content.Context
+import android.content.Intent
+import android.provider.Settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.*
-import com.google.android.gms.auth.api.signin.GoogleSignIn
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions
-import com.google.android.gms.common.api.Scope
-import com.google.api.services.drive.DriveScopes
 import com.notilog.data.local.NotificationDao
-import com.notilog.worker.BackupWorker
 import com.notilog.worker.CleanupWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -36,22 +32,26 @@ class SettingsViewModel @Inject constructor(
     private val _retentionDays = MutableStateFlow(prefs.getInt("retention_days", 30))
     val retentionDays: StateFlow<Int> = _retentionDays.asStateFlow()
 
-    private val _googleAccount = MutableStateFlow<GoogleSignInAccount?>(GoogleSignIn.getLastSignedInAccount(context))
-    val googleAccount: StateFlow<GoogleSignInAccount?> = _googleAccount.asStateFlow()
+    private val _hasNotificationAccess = MutableStateFlow(checkNotificationAccess())
+    val hasNotificationAccess: StateFlow<Boolean> = _hasNotificationAccess.asStateFlow()
 
-    fun getGoogleSignInClient() = GoogleSignIn.getClient(
-        context,
-        GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN)
-            .requestEmail()
-            .requestScopes(Scope(DriveScopes.DRIVE_APPDATA))
-            .build()
-    )
+    private fun checkNotificationAccess(): Boolean {
+        val pkgName = context.packageName
+        val flat = android.provider.Settings.Secure.getString(
+            context.contentResolver,
+            "enabled_notification_listeners"
+        )
+        return flat?.contains(pkgName) == true
+    }
 
-    fun handleGoogleSignInResult(account: GoogleSignInAccount?) {
-        _googleAccount.value = account
-        if (account != null) {
-            scheduleBackup()
-        }
+    fun refreshNotificationAccess() {
+        _hasNotificationAccess.value = checkNotificationAccess()
+    }
+
+    fun openNotificationAccessSettings() {
+        val intent = Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        context.startActivity(intent)
     }
 
     fun setAutoCleanup(enabled: Boolean) {
@@ -91,28 +91,6 @@ class SettingsViewModel @Inject constructor(
 
     private fun cancelCleanup() {
         workManager.cancelUniqueWork("cleanup_work")
-    }
-
-    fun scheduleBackup() {
-        val request = PeriodicWorkRequestBuilder<BackupWorker>(24, TimeUnit.HOURS)
-            .setConstraints(
-                Constraints.Builder()
-                    .setRequiredNetworkType(NetworkType.UNMETERED)
-                    .setRequiresCharging(true)
-                    .build()
-            )
-            .build()
-
-        workManager.enqueueUniquePeriodicWork(
-            "backup_work",
-            ExistingPeriodicWorkPolicy.UPDATE,
-            request
-        )
-    }
-
-    fun runBackupNow() {
-        val request = OneTimeWorkRequestBuilder<BackupWorker>().build()
-        workManager.enqueue(request)
     }
 
     fun runCleanupNow() {

@@ -37,3 +37,6 @@ Notilog is an Android application designed to log and manage system notification
 ## Performance & Best Practices
 - **Compose Stability**: Ensure UI state is stable; use `collectAsStateWithLifecycle` in a real environment (though `collectAsState` is used here for simplicity).
 - **Resource Management**: Properly scope CoroutineScopes in `NotilogApplication` and ViewModels.
+
+### After done coding
+./gradlew assembleDebug 2>&1 && adb install /home/vab/apps/notilog/app/build/outputs/apk/debug/app-debug.apk

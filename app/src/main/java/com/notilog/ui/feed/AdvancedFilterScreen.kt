@@ -1,18 +1,14 @@
 package com.notilog.ui.feed
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
@@ -21,12 +17,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.notilog.ui.theme.GlassCard
-import com.notilog.ui.theme.GlassSurface
-
 import androidx.compose.ui.unit.sp
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -40,43 +35,19 @@ fun AdvancedFilterScreen(
     val selectedCategories = remember { mutableStateListOf<String>() }
     var selectedTimeRange by remember { mutableStateOf("This Week") }
 
+    var headerBottomPx by remember { mutableStateOf(0) }
+    val density = LocalDensity.current
+    val headerBottomDp = with(density) { headerBottomPx.toDp() }
+
     Scaffold(
-        topBar = {
-            GlassSurface(cornerRadius = 0.dp) {
-                TopAppBar(
-                    title = {
-                        Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            Text(
-                                "Filters",
-                                style = MaterialTheme.typography.displaySmall.copy(fontSize = 24.sp),
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold
-                            )
-                        }
-                    },
-                    navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.Default.Close, contentDescription = "Close")
-                        }
-                    },
-                    actions = {
-                        TextButton(onClick = { /* Reset all */ }) {
-                            Text("Reset", style = MaterialTheme.typography.labelLarge)
-                        }
-                    },
-                    colors = TopAppBarDefaults.topAppBarColors(
-                        containerColor = Color.Transparent
-                    ),
-                    modifier = Modifier.statusBarsPadding()
-                )
-            }
-        },
+        topBar = {},
         containerColor = Color.Transparent,
         bottomBar = {
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(16.dp),
+                    .padding(horizontal = 24.dp)
+                    .padding(bottom = 116.dp),
                 color = Color.Transparent
             ) {
                 Button(
@@ -84,10 +55,11 @@ fun AdvancedFilterScreen(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(56.dp),
-                    shape = RoundedCornerShape(16.dp),
+                    shape = RoundedCornerShape(28.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
-                    )
+                    ),
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
                 ) {
                     Icon(Icons.Default.Check, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
@@ -95,35 +67,69 @@ fun AdvancedFilterScreen(
                 }
             }
         }
-    ) { padding ->
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(24.dp),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
-        ) {
-            item {
-                FilterSearchSection(query = searchQuery, onQueryChange = { searchQuery = it })
+    ) { _ ->
+        Box(modifier = Modifier.fillMaxSize()) {
+            if (headerBottomPx > 0) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(top = headerBottomDp - 12.dp),
+                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                    color = MaterialTheme.colorScheme.surface
+                ) {
+                    LazyColumn(
+                        contentPadding = PaddingValues(
+                            top = 24.dp,
+                            start = 24.dp,
+                            end = 24.dp,
+                            bottom = 200.dp
+                        ),
+                        verticalArrangement = Arrangement.spacedBy(24.dp)
+                    ) {
+                        item {
+                            FilterSearchSection(
+                                query = searchQuery,
+                                onQueryChange = { searchQuery = it }
+                            )
+                        }
+                        item { AppSelectionSection() }
+                        item { CategoryGridSection() }
+                        item {
+                            TimeRangeSection(
+                                selectedRange = selectedTimeRange,
+                                onRangeSelected = { selectedTimeRange = it }
+                            )
+                        }
+                    }
+                }
             }
 
-            item {
-                AppSelectionSection()
-            }
-
-            item {
-                CategoryGridSection()
-            }
-
-            item {
-                TimeRangeSection(
-                    selectedRange = selectedTimeRange,
-                    onRangeSelected = { selectedTimeRange = it }
-                )
-            }
-            
-            item {
-                Spacer(Modifier.height(80.dp))
+            // Floating header
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(top = 12.dp, bottom = 16.dp)
+                    .onGloballyPositioned { coords ->
+                        headerBottomPx =
+                            (coords.positionInRoot().y + coords.size.height).toInt()
+                    },
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(Icons.Default.Close, contentDescription = "Close")
+                }
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    Text(
+                        "Filters",
+                        style = MaterialTheme.typography.displaySmall.copy(fontSize = 24.sp),
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                TextButton(onClick = { /* Reset all */ }) {
+                    Text("Reset", style = MaterialTheme.typography.labelLarge)
+                }
             }
         }
     }
@@ -174,7 +180,7 @@ private fun AppSelectionSection() {
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            Icons.Default.Refresh, // Placeholder for app icon
+                            Icons.Default.Refresh,
                             contentDescription = null,
                             tint = if (app == "Mail") MaterialTheme.colorScheme.onPrimaryContainer
                                    else MaterialTheme.colorScheme.onSurfaceVariant
@@ -242,17 +248,27 @@ private fun TimeRangeSection(selectedRange: String, onRangeSelected: (String) ->
                 color = MaterialTheme.colorScheme.primary
             )
         }
-        
         Spacer(Modifier.height(12.dp))
-        
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                TimeRangeCard("Today", "Last 24 hours", isSelected = false, modifier = Modifier.weight(1f))
-                TimeRangeCard("This Week", "Past 7 days", isSelected = true, modifier = Modifier.weight(1f))
+                TimeRangeCard(
+                    "Today", "Last 24 hours", isSelected = false,
+                    modifier = Modifier.weight(1f)
+                )
+                TimeRangeCard(
+                    "This Week", "Past 7 days", isSelected = true,
+                    modifier = Modifier.weight(1f)
+                )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                TimeRangeCard("This Month", "Past 30 days", isSelected = false, modifier = Modifier.weight(1f))
-                TimeRangeCard("Older", "Archive", isSelected = false, modifier = Modifier.weight(1f))
+                TimeRangeCard(
+                    "This Month", "Past 30 days", isSelected = false,
+                    modifier = Modifier.weight(1f)
+                )
+                TimeRangeCard(
+                    "Older", "Archive", isSelected = false,
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
     }
@@ -265,10 +281,12 @@ private fun TimeRangeCard(
     isSelected: Boolean,
     modifier: Modifier = Modifier
 ) {
-    GlassCard(
+    Surface(
         modifier = modifier.height(80.dp),
-        cornerRadius = 16.dp,
-        containerColor = if (isSelected) MaterialTheme.colorScheme.secondaryContainer else null
+        shape = RoundedCornerShape(16.dp),
+        color = if (isSelected) MaterialTheme.colorScheme.secondaryContainer
+                else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        shadowElevation = 2.dp
     ) {
         Column(
             modifier = Modifier
@@ -279,12 +297,14 @@ private fun TimeRangeCard(
             Text(
                 title,
                 style = MaterialTheme.typography.labelLarge,
-                color = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface
+                color = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer
+                        else MaterialTheme.colorScheme.onSurface
             )
             Text(
                 subtitle,
                 style = MaterialTheme.typography.bodySmall,
-                color = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant
+                color = if (isSelected) MaterialTheme.colorScheme.onSecondaryContainer.copy(alpha = 0.7f)
+                        else MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -317,8 +337,9 @@ fun FlowRow(
         }
         if (currentRow.isNotEmpty()) rows.add(currentRow)
 
-        val height = rows.sumOf { row -> row.maxOf { it.height } } + (rows.size - 1) * crossAxisSpacing.roundToPx()
-        
+        val height = rows.sumOf { row -> row.maxOf { it.height } } +
+            (rows.size - 1) * crossAxisSpacing.roundToPx()
+
         layout(constraints.maxWidth, height) {
             var y = 0
             rows.forEach { row ->

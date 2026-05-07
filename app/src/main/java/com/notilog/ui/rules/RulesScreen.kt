@@ -26,10 +26,12 @@ import com.notilog.ui.feed.AppHeader
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RulesScreen() {
+fun RulesScreen(
+    onSettingsClick: () -> Unit = {}
+) {
     Scaffold(
         topBar = {
-            AppHeader()
+            AppHeader(onSettingsClick = onSettingsClick)
         },
         containerColor = Color.Transparent
     ) { padding ->

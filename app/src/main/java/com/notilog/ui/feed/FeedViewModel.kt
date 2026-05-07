@@ -72,7 +72,16 @@ class FeedViewModel @Inject constructor(
             }
         }
         baseFlow.map { list ->
-            list.filter { it.packageName !in blacklisted }
+            list.filter { notification ->
+                if (query.isBlank()) true
+                else {
+                    val titleText = notification.title?.lowercase() ?: ""
+                    val contentText = notification.textContent?.lowercase() ?: ""
+                    val searchText = "$titleText $contentText".trim()
+                    val terms = query.trim().lowercase().split("\\s+".toRegex()).filter { it.isNotBlank() }
+                    terms.all { term -> fuzzyMatch(term, searchText) }
+                }
+            }.filter { it.packageName !in blacklisted }
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
@@ -134,5 +143,25 @@ class FeedViewModel @Inject constructor(
         viewModelScope.launch {
             notificationDao.deleteById(id)
         }
+    }
+
+    private fun fuzzyMatch(term: String, text: String): Boolean {
+        if (text.contains(term)) return true
+        val textWords = text.split("\\s+".toRegex())
+        return textWords.any { word ->
+            fuzzySubstringMatch(term, word)
+        }
+    }
+
+    private fun fuzzySubstringMatch(term: String, word: String, threshold: Float = 0.6f): Boolean {
+        if (term.length > word.length) return fuzzySubstringMatch(word, term, threshold)
+        if (term.isEmpty()) return true
+        var matchedChars = 0
+        for (char in term) {
+            val idx = word.indexOf(char, matchedChars)
+            if (idx == -1) return false
+            matchedChars = idx + 1
+        }
+        return term.length.toFloat() / word.length >= threshold
     }
 }

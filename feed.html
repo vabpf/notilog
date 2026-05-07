@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Notilog - Feed</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary-fixed": "#ffdbce",
+                        "lavender": "#BFC2FF",
+                        "indigo-purple": "#4854BB",
+                        "on-secondary": "#ffffff",
+                        "silver-mist": "#E0E3E6",
+                        "on-secondary-fixed-variant": "#2e3aa2",
+                        "background": "#f9f9ff",
+                        "on-primary-container": "#c3d5ff",
+                        "primary-fixed-dim": "#acc7ff",
+                        "inverse-surface": "#2e3037",
+                        "on-tertiary-fixed-variant": "#802a00",
+                        "on-secondary-fixed": "#000965",
+                        "on-error": "#ffffff",
+                        "surface-container-high": "#e7e8f0",
+                        "charcoal-black": "#0F1114",
+                        "surface-container-lowest": "#ffffff",
+                        "inverse-primary": "#acc7ff",
+                        "error-container": "#ffdad6",
+                        "surface-bright": "#f9f9ff",
+                        "on-tertiary": "#ffffff",
+                        "primary": "#00428e",
+                        "on-background": "#191c22",
+                        "on-error-container": "#93000a",
+                        "surface-container-highest": "#e1e2eb",
+                        "off-white-blue": "#F7F9FC",
+                        "surface-tint": "#075bbd",
+                        "tertiary": "#7c2900",
+                        "primary-fixed": "#d7e2ff",
+                        "outline-variant": "#c2c6d5",
+                        "surface": "#f9f9ff",
+                        "secondary": "#4854bb",
+                        "surface-variant": "#e1e2eb",
+                        "on-primary-fixed": "#001a40",
+                        "periwinkle-blue": "#ADC7FF",
+                        "on-primary-fixed-variant": "#004492",
+                        "royal-blue": "#0059BB",
+                        "secondary-fixed-dim": "#bdc2ff",
+                        "secondary-fixed": "#dfe0ff",
+                        "primary-container": "#0059bb",
+                        "surface-container-low": "#f2f3fc",
+                        "outline": "#727784",
+                        "on-surface": "#191c22",
+                        "on-surface-variant": "#424752",
+                        "secondary-container": "#8692fd",
+                        "surface-dim": "#d9d9e2",
+                        "tertiary-fixed-dim": "#ffb59a",
+                        "slate-grey": "#717786",
+                        "burnt-orange": "#A33800",
+                        "tertiary-container": "#a43800",
+                        "error": "#ba1a1a",
+                        "on-secondary-container": "#16238e",
+                        "inverse-on-surface": "#eff0f9",
+                        "on-primary": "#ffffff",
+                        "on-tertiary-fixed": "#370e00",
+                        "on-tertiary-container": "#ffc9b6",
+                        "surface-container": "#ededf6"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "baseline": "8px",
+                        "screen-edge-h": "16px",
+                        "screen-edge-v": "8px",
+                        "card-inner": "16px",
+                        "stack-sm": "4px",
+                        "stack-md": "12px",
+                        "stack-lg": "24px"
+                    },
+                    "fontFamily": {
+                        "body-md": ["Plus Jakarta Sans"],
+                        "label-md": ["Plus Jakarta Sans"],
+                        "headline-lg": ["Plus Jakarta Sans"],
+                        "label-lg": ["Plus Jakarta Sans"],
+                        "body-lg": ["Plus Jakarta Sans"],
+                        "display-md": ["Plus Jakarta Sans"],
+                        "body-sm": ["Plus Jakarta Sans"],
+                        "display-lg": ["Plus Jakarta Sans"],
+                        "title-lg": ["Plus Jakarta Sans"],
+                        "label-sm": ["Plus Jakarta Sans"],
+                        "title-md": ["Plus Jakarta Sans"],
+                        "title-sm": ["Plus Jakarta Sans"],
+                        "headline-sm": ["Plus Jakarta Sans"],
+                        "headline-md": ["Plus Jakarta Sans"]
+                    },
+                    "fontSize": {
+                        "body-md": ["15px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "label-md": ["12px", { "lineHeight": "16px", "fontWeight": "700" }],
+                        "headline-lg": ["24px", { "lineHeight": "32px", "fontWeight": "700" }],
+                        "label-lg": ["14px", { "lineHeight": "20px", "fontWeight": "700" }],
+                        "body-lg": ["17px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "display-md": ["28px", { "lineHeight": "36px", "fontWeight": "800" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "display-lg": ["34px", { "lineHeight": "42px", "fontWeight": "800" }],
+                        "title-lg": ["18px", { "lineHeight": "24px", "fontWeight": "600" }],
+                        "label-sm": ["12px", { "lineHeight": "16px", "fontWeight": "700" }],
+                        "title-md": ["16px", { "lineHeight": "22px", "fontWeight": "600" }],
+                        "title-sm": ["14px", { "lineHeight": "20px", "fontWeight": "500" }],
+                        "headline-sm": ["20px", { "lineHeight": "26px", "fontWeight": "600" }],
+                        "headline-md": ["22px", { "lineHeight": "28px", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body {
+            background: linear-gradient(135deg, #f9f9ff 0%, #e7e8f0 100%);
+            min-height: 100vh;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 4px 24px -1px rgba(0, 66, 142, 0.05);
+        }
+    </style>
+</head>
+<body class="text-on-background pb-24 md:pb-0 font-body-md">
+<!-- TopAppBar -->
+<header class="bg-background/80 dark:bg-background/80 backdrop-blur-xl sticky top-0 w-full z-40 bg-surface-container-low/50 backdrop-blur-md">
+<div class="flex items-end px-screen-edge-h pb-stack-md pt-12 w-full justify-between">
+<button class="text-on-surface-variant hover:bg-surface-variant/20 transition-colors rounded-full p-2 active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined" data-icon="history">history</span>
+</button>
+<h1 class="font-display-md text-display-md tracking-tight text-primary dark:text-primary-fixed-dim">Notilog</h1>
+<button class="text-on-surface-variant hover:bg-surface-variant/20 transition-colors rounded-full p-2 active:scale-95 transition-transform duration-200">
+<span class="material-symbols-outlined" data-icon="settings">settings</span>
+</button>
+</div>
+</header>
+<main class="max-w-4xl mx-auto px-screen-edge-h pt-stack-md pb-stack-lg">
+<div class="w-full mb-stack-lg rounded-3xl overflow-hidden relative" style="height: 120px;">
+<img alt="Header Graphic" class="absolute inset-0 w-full h-full object-cover opacity-80" data-alt="A wide, abstract hero image with a deep corporate blue and burnt orange color palette. The composition features smooth, modern data-visualization style waves flowing horizontally across a clean, light surface. The lighting is soft and studio-quality, emphasizing clarity, security, and digital archiving. The overall mood is professional, calm, and highly organized." src="https://lh3.googleusercontent.com/aida/ADBb0uiICLMKjF0S4dau99edJMmUh4BY0jwgyBLNCqm2py77YXMYpIhDNaRTdDHFh7YuqBauC8Ylf4_eNANzyeQEva8kdu0YCqnPWlN8leKYGTOpbufaXxuh4Ap_asXuVC0tiwOq1I3j6rZf1XHUNpUnhvNjAADQmPjSGQf7sLE06KwCapBNRF_J4wP-mS9uBOns7rPYPzVjsRzbsFeDMhs-e_kqdl_8_cv7ADdsASKre-BPf-_bwOvIHytZVKMx6bvH9OMEbLeihJw"/>
+<div class="absolute inset-0 bg-gradient-to-r from-background/90 to-transparent"></div>
+<div class="absolute inset-0 p-6 flex flex-col justify-center">
+<h2 class="font-title-lg text-title-lg text-primary">Your Digital Archive</h2>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Organized and secure.</p>
+</div>
+</div>
+<!-- Search Bar -->
+<div class="relative mb-stack-md">
+<span class="material-symbols-outlined absolute left-4 top-1/2 -translate-y-1/2 text-on-surface-variant">search</span>
+<input class="w-full bg-surface-variant border-none rounded-[32px] py-4 pl-12 pr-4 font-body-lg text-body-lg text-on-surface placeholder-on-surface-variant focus:ring-2 focus:ring-primary focus:outline-none shadow-sm transition-all" placeholder="Search notifications..." type="text"/>
+</div>
+<!-- Category Chips -->
+<div class="flex gap-stack-sm overflow-x-auto pb-stack-md mb-stack-md no-scrollbar">
+<button class="shrink-0 bg-primary-container text-on-primary-container rounded-[8px] px-4 py-2 font-label-md text-label-md transition-colors whitespace-nowrap">All</button>
+<button class="shrink-0 border border-outline bg-transparent text-on-surface-variant rounded-[8px] px-4 py-2 font-label-md text-label-md hover:bg-surface-variant/50 transition-colors whitespace-nowrap">2FA</button>
+<button class="shrink-0 border border-outline bg-transparent text-on-surface-variant rounded-[8px] px-4 py-2 font-label-md text-label-md hover:bg-surface-variant/50 transition-colors whitespace-nowrap">Social</button>
+<button class="shrink-0 border border-outline bg-transparent text-on-surface-variant rounded-[8px] px-4 py-2 font-label-md text-label-md hover:bg-surface-variant/50 transition-colors whitespace-nowrap">Work</button>
+<button class="shrink-0 border border-outline bg-transparent text-on-surface-variant rounded-[8px] px-4 py-2 font-label-md text-label-md hover:bg-surface-variant/50 transition-colors whitespace-nowrap">Finance</button>
+</div>
+<!-- Notification Feed -->
+<div class="space-y-stack-md">
+<!-- Card 1 -->
+<div class="glass-card rounded-[16px] p-card-inner flex items-start gap-stack-md transition-transform active:scale-[0.98]">
+<div class="w-10 h-10 rounded-full bg-indigo-purple flex items-center justify-center shrink-0 shadow-sm">
+<span class="material-symbols-outlined text-white text-xl" data-icon="mail">mail</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-center mb-1">
+<span class="font-title-md text-title-md text-on-surface truncate">Work Email</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant shrink-0 ml-2">Just now</span>
+</div>
+<p class="font-title-sm text-title-sm text-on-surface font-semibold mb-0.5">Project Update: Q3 Deliverables</p>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2">The latest metrics have been compiled. Please review the attached dashboard link before the 3 PM sync today.</p>
+</div>
+</div>
+<!-- Card 2 -->
+<div class="glass-card rounded-[16px] p-card-inner flex items-start gap-stack-md transition-transform active:scale-[0.98]">
+<div class="w-10 h-10 rounded-full bg-burnt-orange flex items-center justify-center shrink-0 shadow-sm">
+<span class="material-symbols-outlined text-white text-xl" data-icon="lock">lock</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-center mb-1">
+<span class="font-title-md text-title-md text-on-surface truncate">Auth Service</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant shrink-0 ml-2">10m ago</span>
+</div>
+<p class="font-title-sm text-title-sm text-on-surface font-semibold mb-0.5">Your Verification Code</p>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2">847291 is your authentication code. Do not share this with anyone. It expires in 15 minutes.</p>
+</div>
+</div>
+<!-- Card 3 -->
+<div class="glass-card rounded-[16px] p-card-inner flex items-start gap-stack-md transition-transform active:scale-[0.98]">
+<div class="w-10 h-10 rounded-full bg-surface-container-highest flex items-center justify-center shrink-0 shadow-sm">
+<span class="material-symbols-outlined text-primary text-xl" data-icon="calendar_month">calendar_month</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-center mb-1">
+<span class="font-title-md text-title-md text-on-surface truncate">Calendar</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant shrink-0 ml-2">1h ago</span>
+</div>
+<p class="font-title-sm text-title-sm text-on-surface font-semibold mb-0.5">Upcoming: Design Review</p>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2">Starting in 15 minutes. Room: Virtual Space A.</p>
+</div>
+</div>
+<!-- Card 4 -->
+<div class="glass-card rounded-[16px] p-card-inner flex items-start gap-stack-md transition-transform active:scale-[0.98]">
+<div class="w-10 h-10 rounded-full bg-secondary-container flex items-center justify-center shrink-0 shadow-sm">
+<span class="material-symbols-outlined text-on-secondary-container text-xl" data-icon="forum">forum</span>
+</div>
+<div class="flex-1 min-w-0">
+<div class="flex justify-between items-center mb-1">
+<span class="font-title-md text-title-md text-on-surface truncate">Team Chat</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant shrink-0 ml-2">2h ago</span>
+</div>
+<p class="font-title-sm text-title-sm text-on-surface font-semibold mb-0.5">Sarah Jenkins</p>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-2">Can you push the latest commits to staging? I need to verify the new API endpoints before the demo.</p>
+</div>
+</div>
+</div>
+</main>
+<!-- BottomNavBar -->
+<nav class="md:hidden bg-surface-container-lowest/90 dark:bg-charcoal-black/90 backdrop-blur-2xl fixed bottom-0 w-full rounded-t-xl shadow-lg border-t border-outline-variant/30 fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pt-2 pb-6">
+<a class="flex flex-col items-center justify-center bg-secondary-container text-on-secondary-container rounded-full px-5 py-1.5 active:scale-90 transition-all duration-300 ease-out" href="#">
+<span class="material-symbols-outlined" data-icon="view_day" style="font-variation-settings: 'FILL' 1;">view_day</span>
+<span class="font-label-md text-label-md mt-1">Feed</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/10 active:scale-90 transition-all duration-300 ease-out px-5 py-1.5 rounded-full" href="#">
+<span class="material-symbols-outlined" data-icon="filter_list">filter_list</span>
+<span class="font-label-md text-label-md mt-1">Filters</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/10 active:scale-90 transition-all duration-300 ease-out px-5 py-1.5 rounded-full" href="#">
+<span class="material-symbols-outlined" data-icon="auto_awesome">auto_awesome</span>
+<span class="font-label-md text-label-md mt-1">Rules</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-surface-variant/10 active:scale-90 transition-all duration-300 ease-out px-5 py-1.5 rounded-full" href="#">
+<span class="material-symbols-outlined" data-icon="analytics">analytics</span>
+<span class="font-label-md text-label-md mt-1">Insights</span>
+</a>
+</nav>
+<!-- Desktop Nav Cluster in TopAppBar (Hidden on mobile) -->
+<div class="hidden md:flex fixed top-0 right-16 h-[104px] items-center gap-8 z-50">
+<a class="font-label-lg text-label-lg text-primary font-bold hover:bg-surface-variant/20 px-4 py-2 rounded-lg transition-colors" href="#">Feed</a>
+<a class="font-label-lg text-label-lg text-on-surface-variant hover:bg-surface-variant/20 px-4 py-2 rounded-lg transition-colors" href="#">Filters</a>
+<a class="font-label-lg text-label-lg text-on-surface-variant hover:bg-surface-variant/20 px-4 py-2 rounded-lg transition-colors" href="#">Rules</a>
+<a class="font-label-lg text-label-lg text-on-surface-variant hover:bg-surface-variant/20 px-4 py-2 rounded-lg transition-colors" href="#">Insights</a>
+</div>
+</body></html>

@@ -43,7 +43,7 @@ android {
         compose = true
     }
     composeOptions {
-        kotlinCompilerExtensionVersion = "1.5.3"
+        kotlinCompilerExtensionVersion = "1.5.10"
     }
     packaging {
         resources {
@@ -96,10 +96,14 @@ dependencies {
     // Gson
     implementation("com.google.code.gson:gson:2.10.1")
 
-    // Google Drive
-    implementation("com.google.android.gms:play-services-auth:20.7.0")
-    implementation("com.google.api-client:google-api-client-android:2.2.0")
-    implementation("com.google.apis:google-api-services-drive:v3-rev20230822-2.0.0")
+    // Haze for glassmorphism
+    implementation("dev.chrisbanes.haze:haze:0.6.0")
+
+    
+
+    
+
+    
 
     testImplementation("junit:junit:4.13.2")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")

@@ -117,8 +117,8 @@ fun GradientBackground(
                 } else {
                     Brush.linearGradient(
                         colors = listOf(
-                            Color(0xFFF9F9FF),
-                            Color(0xFFE7E8F0),
+                            Color(0xFFFFFFFF),
+                            Color(0xFFFFFFFF),
                         ),
                         start = Offset(0f, 0f),
                         end = Offset(Float.POSITIVE_INFINITY, Float.POSITIVE_INFINITY),

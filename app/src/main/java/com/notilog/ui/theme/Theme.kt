@@ -41,9 +41,9 @@ private val LightColorScheme = lightColorScheme(
     onError = Color(0xFFFFFFFF),
     errorContainer = Color(0xFFFFDAD6),
     onErrorContainer = Color(0xFF93000A),
-    background = Color(0xFFF9F9FF),
+    background = Color(0xFFFFFFFF),
     onBackground = Color(0xFF191C22),
-    surface = Color(0xFFF9F9FF),
+    surface = Color(0xFFFFFFFF),
     onSurface = Color(0xFF191C22),
     surfaceVariant = Color(0xFFE1E2EB),
     onSurfaceVariant = Color(0xFF424752),
@@ -106,13 +106,8 @@ data class GlassTokens(
     val ambientGlow: Color,
 )
 
-// Plus Jakarta Sans font family - real assets from res/font
-val PlusJakartaSans = FontFamily(
-    Font(R.font.plusjakartasans_regular, FontWeight.Normal),
-    Font(R.font.plusjakartasans_medium, FontWeight.Medium),
-    Font(R.font.plusjakartasans_semibold, FontWeight.SemiBold),
-    Font(R.font.plusjakartasans_bold, FontWeight.Bold),
-)
+// System font family - fallback to ensure compatibility
+val PlusJakartaSans = FontFamily.Default
 
 @Composable
 fun NotilogTheme(
