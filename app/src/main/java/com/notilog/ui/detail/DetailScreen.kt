@@ -84,7 +84,7 @@ fun DetailScreen(
                         item {
                             Surface(
                                 shape = RoundedCornerShape(16.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                color = MaterialTheme.colorScheme.surfaceVariant,
                                 shadowElevation = 2.dp
                             ) {
                                 Column(
@@ -213,7 +213,7 @@ fun DetailScreen(
                                 Surface(
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(16.dp),
-                                    color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                    color = MaterialTheme.colorScheme.surfaceVariant,
                                     shadowElevation = 2.dp
                                 ) {
                                     Box(
@@ -240,7 +240,7 @@ fun DetailScreen(
                         item {
                             Surface(
                                 shape = RoundedCornerShape(16.dp),
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                                color = MaterialTheme.colorScheme.surfaceVariant,
                                 shadowElevation = 2.dp
                             ) {
                                 Button(
@@ -362,7 +362,7 @@ private fun VersionCard(version: NotificationEntity, isLatest: Boolean) {
     val context = LocalContext.current
     Surface(
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        color = MaterialTheme.colorScheme.surfaceVariant,
         shadowElevation = 2.dp
     ) {
         Column {

@@ -4,6 +4,9 @@ import android.graphics.drawable.Drawable
 import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
@@ -33,6 +36,12 @@ import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -56,13 +65,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.res.painterResource
 import androidx.core.graphics.drawable.toBitmap
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.notilog.data.local.NotificationEntity
-import com.notilog.ui.theme.GlassCard
-import com.notilog.ui.theme.GlassSurface
-import com.notilog.ui.theme.LocalGlassTokens
+import com.notilog.data.local.AppInfoEntry
 import com.notilog.ui.theme.StatusBadge
+import com.notilog.ui.theme.Colors
 import com.notilog.ui.theme.TimeChip
 import java.text.SimpleDateFormat
 import java.util.*
@@ -72,31 +81,6 @@ private val categories = listOf("All", "Social", "Banking", "Shopping", "System"
 private fun formatCategory(category: String): String {
     return category.replace("_", " ").lowercase().replaceFirstChar { it.uppercase() }
 }
-
-private val categoryColors = mapOf(
-    "SOCIAL" to Color(0xFF818CF8),
-    "BANKING" to Color(0xFF34D399),
-    "SHOPPING" to Color(0xFFF59E0B),
-    "SYSTEM" to Color(0xFF94A3B8),
-    "UNCATEGORIZED" to Color(0xFFA78BFA),
-    "COMMUNICATION" to Color(0xFF818CF8),
-    "ENTERTAINMENT" to Color(0xFFF472B6),
-    "PRODUCTIVITY" to Color(0xFF60A5FA),
-    "FINANCE" to Color(0xFF34D399),
-    "TRAVEL_AND_LOCAL" to Color(0xFFF59E0B),
-    "HEALTH_AND_FITNESS" to Color(0xFF10B981),
-    "EDUCATION" to Color(0xFF8B5CF6),
-    "NEWS_AND_MAGAZINES" to Color(0xFF6366F1),
-    "MUSIC_AND_AUDIO" to Color(0xFFEC4899),
-    "VIDEO_PLAYERS" to Color(0xFFEF4444),
-    "LIFESTYLE" to Color(0xFFF59E0B),
-    "BOOKS_AND_REFERENCE" to Color(0xFF8B5CF6),
-    "FOOD_AND_DRINK" to Color(0xFFF97316),
-    "SPORTS" to Color(0xFF22C55E),
-    "PHOTOGRAPHY" to Color(0xFF06B6D4),
-    "TOOLS" to Color(0xFF94A3B8),
-    "BUSINESS" to Color(0xFF3B82F6),
-)
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
@@ -111,6 +95,12 @@ fun FeedScreen(
     val selectedIds by viewModel.selectedIds.collectAsState()
     val isSelectionMode by viewModel.isSelectionMode.collectAsState()
     val categoryCounts by viewModel.categoryCounts.collectAsState()
+    val hasActiveFilters by viewModel.hasActiveFilters.collectAsState()
+    val filterState by viewModel.filterState.collectAsState()
+    val recentApps by viewModel.recentApps.collectAsState()
+    val allApps by viewModel.allApps.collectAsState()
+
+    var isFilterExpanded by remember { mutableStateOf(false) }
 
     val hazeState = remember { HazeState() }
 
@@ -201,8 +191,33 @@ verticalArrangement = Arrangement.Top
             FeedSearchSection(
                 query = searchQuery,
                 onQueryChange = viewModel::setSearchQuery,
+                onFilterClick = { isFilterExpanded = !isFilterExpanded },
+                hasActiveFilters = hasActiveFilters,
                 modifier = Modifier.fillMaxWidth()
             )
+
+            // Filter options
+            AnimatedVisibility(
+                visible = isFilterExpanded,
+                enter = expandVertically(
+                    animationSpec = tween(200)
+                ),
+                exit = shrinkVertically(
+                    animationSpec = tween(200)
+                )
+            ) {
+                FilterOptionsSection(
+                    filterState = filterState,
+                    onFilterChange = viewModel::setFilterState,
+                    onReset = viewModel::resetFilters,
+                    recentApps = recentApps,
+                    allApps = allApps,
+                    onShowAllApps = { /* TODO: Show app selection dialog */ },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 0.dp)
+                )
+            }
             QuickFilterBar(
                 categoryCounts = categoryCounts,
                 selectedCategory = selectedCategory,
@@ -215,12 +230,12 @@ verticalArrangement = Arrangement.Top
 
 @Composable
 fun HeroBanner() {
-    GlassCard(
+    Card(
         modifier = Modifier
             .fillMaxWidth()
             .height(120.dp),
-        cornerRadius = 24.dp,
-        containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f))
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             Canvas(modifier = Modifier.fillMaxSize()) {
@@ -272,9 +287,9 @@ fun AppHeader(
     onHistoryClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {}
 ) {
-    GlassSurface(
-        cornerRadius = 0.dp,
-        modifier = Modifier.fillMaxWidth()
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface
     ) {
         TopAppBar(
             title = {
@@ -319,6 +334,8 @@ fun AppHeader(
 fun FeedSearchSection(
     query: String,
     onQueryChange: (String) -> Unit,
+    onFilterClick: () -> Unit,
+    hasActiveFilters: Boolean,
     modifier: Modifier = Modifier
 ) {
     Surface(
@@ -347,6 +364,33 @@ fun FeedSearchSection(
                     tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
                 )
             },
+            trailingIcon = {
+                Box(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    IconButton(
+                        onClick = onFilterClick,
+                        modifier = Modifier
+                            .size(48.dp)
+                            .align(Alignment.CenterEnd)
+                    ) {
+                        Icon(
+                            painter = painterResource(com.notilog.R.drawable.filter_list_24),
+                            contentDescription = "Filter",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        )
+                    }
+                    if (hasActiveFilters) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .offset(x = (-12).dp, y = 12.dp)
+                                .size(8.dp)
+                                .background(Color.Red, CircleShape)
+                        )
+                    }
+                }
+            },
             shape = RoundedCornerShape(32.dp),
             colors = TextFieldDefaults.outlinedTextFieldColors(
                 focusedBorderColor = Color.Transparent,
@@ -366,7 +410,10 @@ fun SelectionTopBar(
     onDeleteSelected: () -> Unit,
     onBlacklistSelected: () -> Unit
 ) {
-    GlassSurface(cornerRadius = 0.dp) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.surface
+    ) {
         TopAppBar(
             title = {
                 Row(
@@ -418,29 +465,15 @@ fun EmptyState() {
             .padding(vertical = 32.dp),
         contentAlignment = Alignment.Center
     ) {
-        GlassCard(
+        Card(
             modifier = Modifier.padding(16.dp),
-            cornerRadius = 24.dp
+            shape = RoundedCornerShape(24.dp)
         ) {
             Column(
                 modifier = Modifier.padding(40.dp, 32.dp),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(80.dp)
-                        .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Settings,
-                        contentDescription = null,
-                        modifier = Modifier.size(40.dp),
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                }
                 Text(
                     "No notifications found",
                     style = MaterialTheme.typography.titleLarge,
@@ -484,15 +517,18 @@ fun QuickFilterBar(
                 label = "All",
                 count = totalCount,
                 isSelected = isSelected,
+                categoryColor = Colors.MainBlue,
                 onClick = { onCategorySelected("All") }
             )
         }
         items(activeCategories) { entry ->
             val isSelected = selectedCategory == entry.category
+            val categoryColor = Colors.chartColors[activeCategories.indexOf(entry) % Colors.chartColors.size]
             ShadowChip(
                 label = formatCategory(entry.category),
                 count = entry.count,
                 isSelected = isSelected,
+                categoryColor = categoryColor,
                 onClick = { onCategorySelected(if (isSelected) "All" else entry.category) }
             )
         }
@@ -504,19 +540,22 @@ private fun ShadowChip(
     label: String,
     count: Int,
     isSelected: Boolean,
+    categoryColor: Color,
     onClick: () -> Unit
 ) {
-    val bgColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer
+    val bgColor = if (isSelected) MaterialTheme.colorScheme.surface
                   else MaterialTheme.colorScheme.surface
-    val labelColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
+    val labelColor = if (isSelected) categoryColor
                      else MaterialTheme.colorScheme.onSurfaceVariant
     val countColor = labelColor.copy(alpha = 0.6f)
+    val borderColor = if (isSelected) categoryColor else Color.Transparent
 
     Surface(
         onClick = onClick,
         shape = RoundedCornerShape(20.dp),
         color = bgColor,
-        shadowElevation = 4.dp
+        shadowElevation = 4.dp,
+        border = androidx.compose.foundation.BorderStroke(1.5.dp, borderColor)
     ) {
         Row(
             modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
@@ -703,6 +742,186 @@ private fun DaySeparator(label: String) {
                 .height(0.5.dp)
                 .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.25f))
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FilterOptionsSection(
+    filterState: FilterState,
+    onFilterChange: (FilterState) -> Unit,
+    onReset: () -> Unit,
+    recentApps: List<AppInfoEntry> = emptyList(),
+    allApps: List<AppInfoEntry> = emptyList(),
+    onShowAllApps: () -> Unit = {},
+    onCustomDateClick: () -> Unit = {},
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        modifier = modifier,
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White,
+        shadowElevation = 2.dp
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            // Date Range
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Date Range",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    "Custom",
+                    style = MaterialTheme.typography.bodySmall.copy(
+                        fontWeight = FontWeight.Normal
+                    ),
+                    color = Colors.MainBlue,
+                    modifier = Modifier.clickable(onClick = onCustomDateClick)
+                )
+            }
+            LazyRow(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                val dateOptions = listOf(
+                    DateRangeOption.ALL to "All",
+                    DateRangeOption.TODAY to "Today",
+                    DateRangeOption.YASTEDAY to "Yesterday",
+                    DateRangeOption.LAST_7_DAYS to "Last 7 days",
+                    DateRangeOption.LAST_30_DAYS to "Last 30 days"
+                )
+                items(dateOptions) { (option, label) ->
+                    FilterChip(
+                        selected = filterState.dateRange == option,
+                        onClick = { onFilterChange(filterState.copy(dateRange = option)) },
+                        label = { Text(label, style = MaterialTheme.typography.bodySmall) },
+                        shape = RoundedCornerShape(50),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Colors.MainBlue,
+                            selectedLabelColor = Color.White
+                        )
+                    )
+                }
+            }
+
+            // Divider
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(0.5.dp)
+                    .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+            )
+
+            // Apps
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    "Apps",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (allApps.size > 5) {
+                    Text(
+                        "See more",
+                        style = MaterialTheme.typography.bodySmall.copy(
+                            fontWeight = FontWeight.Normal
+                        ),
+                        color = Colors.MainBlue,
+                        modifier = Modifier.clickable(onClick = onShowAllApps)
+                    )
+                }
+            }
+            
+            if (recentApps.isNotEmpty()) {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    items(recentApps) { app ->
+                        FilterChip(
+                            selected = app.packageName in filterState.selectedApps,
+                            onClick = {
+                                val newApps = if (app.packageName in filterState.selectedApps) {
+                                    filterState.selectedApps - app.packageName
+                                } else {
+                                    filterState.selectedApps + app.packageName
+                                }
+                                onFilterChange(filterState.copy(selectedApps = newApps))
+                            },
+                            label = { Text(app.appName, style = MaterialTheme.typography.bodySmall) },
+                            shape = RoundedCornerShape(50),
+                            colors = FilterChipDefaults.filterChipColors(
+                                selectedContainerColor = Colors.MainBlue,
+                                selectedLabelColor = Color.White
+                            )
+                        )
+                    }
+                }
+            }
+
+            // Divider
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(0.5.dp)
+                    .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+            )
+
+            // Sort
+            Text(
+                "Sort by",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                listOf(
+                    SortOption.NEWEST to "Newest",
+                    SortOption.OLDEST to "Oldest",
+                    SortOption.APP_NAME to "App name"
+                ).forEach { (option, label) ->
+                    FilterChip(
+                        selected = filterState.sortOption == option,
+                        onClick = { onFilterChange(filterState.copy(sortOption = option)) },
+                        label = { Text(label, style = MaterialTheme.typography.bodySmall) },
+                        shape = RoundedCornerShape(50),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Colors.MainBlue,
+                            selectedLabelColor = Color.White
+                        )
+                    )
+                }
+            }
+
+            // Reset button
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(32.dp),
+                horizontalArrangement = Arrangement.End,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(
+                    onClick = onReset,
+                    modifier = Modifier.height(32.dp)
+                ) {
+                    Text(
+                        "Reset filters",
+                        color = Colors.MainBlue
+                    )
+                }
+            }
+        }
     }
 }
 

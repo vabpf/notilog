@@ -23,7 +23,8 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.notilog.data.local.BlacklistedAppEntity
 import com.notilog.ui.feed.AppIcon
-import com.notilog.ui.theme.GlassCard
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import com.notilog.ui.theme.StatusBadge
 
 @Composable
@@ -158,7 +159,10 @@ fun ExcludedAppCard(
     packageName: String,
     onRemove: () -> Unit
 ) {
-    GlassCard(cornerRadius = 16.dp, shadowElevation = 4.dp) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()

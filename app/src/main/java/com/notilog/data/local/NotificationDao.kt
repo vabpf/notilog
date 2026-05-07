@@ -61,9 +61,54 @@ interface NotificationDao {
 
     @Query("DELETE FROM notifications WHERE systemId = :systemId AND (tag = :tag OR (tag IS NULL AND :tag IS NULL))")
     suspend fun deleteBySystemId(systemId: Int, tag: String?)
+
+    @Query("SELECT packageName, appName, MAX(postTime) as lastPostTime FROM notifications WHERE isDeleted = 0 GROUP BY packageName ORDER BY MAX(postTime) DESC LIMIT :limit")
+    fun getRecentApps(limit: Int): Flow<List<AppInfoEntry>>
+
+    @Query("SELECT packageName, appName FROM notifications WHERE isDeleted = 0 GROUP BY packageName ORDER BY appName ASC")
+    fun getAllApps(): Flow<List<AppInfoEntry>>
+
+    // Insights queries
+    @Query("SELECT COUNT(*) FROM notifications WHERE isDeleted = 0")
+    fun getTotalNotificationCount(): Flow<Int>
+
+    @Query("SELECT COUNT(*) FROM notifications WHERE isDeleted = 0 AND postTime >= :startOfDay")
+    fun getNotificationCountSince(startOfDay: Long): Flow<Int>
+
+    @Query("SELECT category, COUNT(*) as count FROM notifications WHERE isDeleted = 0 GROUP BY category ORDER BY count DESC")
+    fun getCategoryBreakdown(): Flow<List<CategoryCountEntry>>
+
+    @Query("SELECT packageName, appName, COUNT(*) as count FROM notifications WHERE isDeleted = 0 GROUP BY packageName ORDER BY count DESC LIMIT :limit")
+    fun getTopApps(limit: Int): Flow<List<AppCountEntry>>
+
+    @Query("""
+        SELECT strftime('%Y-%m-%d', postTime/1000, 'unixepoch') as date, COUNT(*) as count 
+        FROM notifications 
+        WHERE isDeleted = 0 AND postTime >= :sinceTimestamp 
+        GROUP BY strftime('%Y-%m-%d', postTime/1000, 'unixepoch') 
+        ORDER BY date DESC
+    """)
+    fun getDailyCounts(sinceTimestamp: Long): Flow<List<DailyCountEntry>>
 }
 
 data class CategoryCountEntry(
     val category: String,
+    val count: Int
+)
+
+data class AppInfoEntry(
+    val packageName: String,
+    val appName: String,
+    val lastPostTime: Long? = null
+)
+
+data class AppCountEntry(
+    val packageName: String,
+    val appName: String,
+    val count: Int
+)
+
+data class DailyCountEntry(
+    val date: String,
     val count: Int
 )

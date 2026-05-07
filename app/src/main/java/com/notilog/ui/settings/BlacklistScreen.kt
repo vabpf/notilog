@@ -2,6 +2,7 @@ package com.notilog.ui.settings
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -17,8 +18,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.notilog.ui.feed.AppIcon
-import com.notilog.ui.theme.GlassCard
-import com.notilog.ui.theme.GlassSurface
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import com.notilog.ui.theme.StatusBadge
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -31,7 +32,7 @@ fun BlacklistScreen(
 
     Scaffold(
         topBar = {
-            GlassSurface(cornerRadius = 0.dp) {
+            Surface(modifier = Modifier.fillMaxWidth()) {
                 TopAppBar(
                     title = {
                         Text(
@@ -60,7 +61,7 @@ fun BlacklistScreen(
                     .padding(padding),
                 contentAlignment = Alignment.Center
             ) {
-                GlassCard(cornerRadius = 20.dp) {
+                Card(shape = RoundedCornerShape(20.dp)) {
                     Column(
                         modifier = Modifier.padding(32.dp),
                         horizontalAlignment = Alignment.CenterHorizontally,
@@ -99,7 +100,10 @@ fun BlacklistScreen(
 
 @Composable
 fun BlacklistedAppCard(packageName: String, onRemove: () -> Unit) {
-    GlassCard(cornerRadius = 20.dp, shadowElevation = 6.dp) {
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()

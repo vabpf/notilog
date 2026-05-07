@@ -3,11 +3,14 @@ package com.notilog.ui.insights
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -19,13 +22,18 @@ import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
+import com.notilog.ui.theme.Colors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InsightsScreen(
-    onSettingsClick: () -> Unit = {}
+    onSettingsClick: () -> Unit = {},
+    viewModel: InsightsViewModel = hiltViewModel()
 ) {
+    val insightsState by viewModel.insightsState.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
+
     var headerBottomPx by remember { mutableStateOf(0) }
     val density = LocalDensity.current
     val headerBottomDp = with(density) { headerBottomPx.toDp() }
@@ -43,84 +51,52 @@ fun InsightsScreen(
                     shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
                     color = MaterialTheme.colorScheme.surface
                 ) {
-                    LazyColumn(
-                        contentPadding = PaddingValues(
-                            top = 24.dp,
-                            start = 24.dp,
-                            end = 24.dp,
-                            bottom = 132.dp
-                        ),
-                        verticalArrangement = Arrangement.spacedBy(24.dp)
-                    ) {
-                        item {
-                            Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                                MetricCard(
-                                    title = "Total Blocked",
-                                    value = "1,402",
-                                    change = "+12%",
-                                    isPositive = true,
-                                    modifier = Modifier.weight(1f)
+                    if (isLoading) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator(color = Colors.MainBlue)
+                        }
+                    } else {
+                        LazyColumn(
+                            contentPadding = PaddingValues(
+                                top = 24.dp,
+                                start = 16.dp,
+                                end = 16.dp,
+                                bottom = 132.dp
+                            ),
+                            verticalArrangement = Arrangement.spacedBy(16.dp)
+                        ) {
+                            // Summary Cards
+                            item {
+                                SummaryCardsRow(
+                                    totalCount = insightsState.summary.totalCount,
+                                    todayCount = insightsState.summary.todayCount,
+                                    weekCount = insightsState.summary.weekCount
                                 )
-                                MetricCard(
-                                    title = "Recovered",
-                                    value = "87",
-                                    change = "-5%",
-                                    isPositive = false,
-                                    modifier = Modifier.weight(1f)
+                            }
+
+                            // Category Breakdown
+                            item {
+                                CategoryChartCard(
+                                    categories = insightsState.categoryInsights
                                 )
                             }
-                        }
 
-                        item {
-                            ChartCard(title = "Notification Volume") {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .height(120.dp)
-                                        .background(
-                                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                                            RoundedCornerShape(12.dp)
-                                        ),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    Text(
-                                        "Volume Graph Placeholder",
-                                        style = MaterialTheme.typography.labelSmall
-                                    )
-                                }
+                            // Top Apps
+                            item {
+                                TopAppsCard(
+                                    apps = insightsState.topApps
+                                )
                             }
-                        }
 
-                        item {
-                            ChartCard(title = "Notifications by App") {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.Center
-                                ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(100.dp)
-                                            .clip(CircleShape)
-                                            .background(
-                                                MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                                            ),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text("Apps", style = MaterialTheme.typography.labelSmall)
-                                    }
-                                    Spacer(Modifier.width(24.dp))
-                                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                        LegendItem(Color(0xFF00428E), "Messages")
-                                        LegendItem(Color(0xFF4854BB), "Social")
-                                        LegendItem(Color(0xFF7C2900), "System")
-                                    }
-                                }
+                            // Daily Trend
+                            item {
+                                DailyTrendCard(
+                                    dailyData = insightsState.dailyInsights
+                                )
                             }
-                        }
-
-                        item {
-                            Spacer(Modifier.height(32.dp))
                         }
                     }
                 }
@@ -139,16 +115,9 @@ fun InsightsScreen(
             ) {
                 Text(
                     "Deep Insights",
-                    style = MaterialTheme.typography.displayLarge.copy(fontSize = 34.sp),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    fontWeight = FontWeight.ExtraBold,
-                    letterSpacing = (-0.02).sp
-                )
-                Text(
-                    "Analyzing your digital flow over the last 7 days.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp, bottom = 16.dp)
+                    style = MaterialTheme.typography.headlineMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface
                 )
             }
         }
@@ -156,54 +125,64 @@ fun InsightsScreen(
 }
 
 @Composable
-fun MetricCard(
+private fun SummaryCardsRow(
+    totalCount: Int,
+    todayCount: Int,
+    weekCount: Int
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        SummaryCard(
+            title = "Total",
+            value = totalCount.toString(),
+            icon = Icons.Rounded.Notifications,
+            modifier = Modifier.weight(1f)
+        )
+        SummaryCard(
+            title = "Today",
+            value = todayCount.toString(),
+            icon = Icons.Default.Settings,
+            modifier = Modifier.weight(1f)
+        )
+        SummaryCard(
+            title = "This Week",
+            value = weekCount.toString(),
+            icon = Icons.Default.Star,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun SummaryCard(
     title: String,
     value: String,
-    change: String,
-    isPositive: Boolean,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
     modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = modifier.height(120.dp),
+        modifier = modifier.height(100.dp),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        color = Color.White,
         shadowElevation = 2.dp
     ) {
         Column(
-            modifier = Modifier.padding(20.dp),
+            modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Icon(
-                    if (isPositive) Icons.Default.Warning else Icons.Default.Refresh,
-                    contentDescription = null,
-                    tint = if (isPositive) MaterialTheme.colorScheme.secondary
-                           else MaterialTheme.colorScheme.tertiary,
-                    modifier = Modifier.size(20.dp)
-                )
-                Box(
-                    modifier = Modifier
-                        .background(
-                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-                            CircleShape
-                        )
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
-                ) {
-                    Text(
-                        change,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (isPositive) Color(0xFF34D399) else Color(0xFFF87171)
-                    )
-                }
-            }
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = Colors.MainBlue,
+                modifier = Modifier.size(20.dp)
+            )
             Column {
                 Text(
                     value,
-                    style = MaterialTheme.typography.displayMedium,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
@@ -217,36 +196,242 @@ fun MetricCard(
 }
 
 @Composable
-fun ChartCard(title: String, content: @Composable () -> Unit) {
+private fun CategoryChartCard(
+    categories: List<CategoryInsight>
+) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+        color = Color.White,
         shadowElevation = 2.dp
     ) {
-        Column(modifier = Modifier.padding(20.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                title,
+                "By Category",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(bottom = 16.dp)
             )
-            content()
+            
+            if (categories.isEmpty()) {
+                Text(
+                    "No data yet",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                val colors = Colors.chartColors
+                categories.take(6).forEachIndexed { index, category ->
+                    CategoryBarItem(
+                        category = formatCategory(category.category),
+                        count = category.count,
+                        percentage = category.percentage,
+                        color = colors[index % colors.size]
+                    )
+                    if (index < categories.size - 1) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                }
+            }
         }
     }
 }
 
 @Composable
-fun LegendItem(color: Color, label: String) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        Box(modifier = Modifier.size(8.dp).clip(CircleShape).background(color))
-        Text(
-            label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+private fun CategoryBarItem(
+    category: String,
+    count: Int,
+    percentage: Float,
+    color: Color
+) {
+    Column {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                category,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+            Text(
+                count.toString(),
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Medium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+        Spacer(modifier = Modifier.height(4.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(8.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(color.copy(alpha = 0.2f))
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth(fraction = (percentage / 100f).coerceIn(0f, 1f))
+                    .fillMaxHeight()
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(color)
+            )
+        }
     }
+}
+
+@Composable
+private fun TopAppsCard(
+    apps: List<AppInsight>
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White,
+        shadowElevation = 2.dp
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                "Top Apps",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+            
+            if (apps.isEmpty()) {
+                Text(
+                    "No data yet",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                apps.forEachIndexed { index, app ->
+                    AppListItem(
+                        rank = index + 1,
+                        appName = app.appName,
+                        count = app.count
+                    )
+                    if (index < apps.size - 1) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppListItem(
+    rank: Int,
+    appName: String,
+    count: Int
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(36.dp)
+                    .clip(CircleShape)
+                    .background(Colors.MainBlue.copy(alpha = 0.1f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    rank.toString(),
+                    style = MaterialTheme.typography.bodySmall,
+                    fontWeight = FontWeight.Bold,
+                    color = Colors.MainBlue
+                )
+            }
+            Text(
+                appName,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(12.dp))
+                .background(Colors.MainBlue.copy(alpha = 0.1f))
+                .padding(horizontal = 10.dp, vertical = 4.dp)
+        ) {
+            Text(
+                count.toString(),
+                style = MaterialTheme.typography.bodySmall,
+                fontWeight = FontWeight.Bold,
+                color = Colors.MainBlue
+            )
+        }
+    }
+}
+
+@Composable
+private fun DailyTrendCard(
+    dailyData: List<DailyInsight>
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.White,
+        shadowElevation = 2.dp
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                "Last 7 Days",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 16.dp)
+            )
+            
+            if (dailyData.isEmpty()) {
+                Text(
+                    "No data yet",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            } else {
+                val maxCount = dailyData.maxOfOrNull { it.count } ?: 1
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(100.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.Bottom
+                ) {
+                    dailyData.forEach { day ->
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Bottom
+                        ) {
+                            val heightFraction = if (maxCount > 0) day.count.toFloat() / maxCount else 0f
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .fillMaxHeight(heightFraction.coerceIn(0.05f, 1f))
+                                    .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
+                                    .background(Colors.MainBlue)
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                day.date.takeLast(5),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+private fun formatCategory(category: String): String {
+    return category.replace("_", " ").lowercase().replaceFirstChar { it.uppercase() }
 }

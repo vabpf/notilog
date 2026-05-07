@@ -38,9 +38,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.notilog.ui.navigation.NotilogNavGraph
 import com.notilog.ui.navigation.Screen
-import com.notilog.ui.theme.GlassSurface
-import com.notilog.ui.theme.GradientBackground
-import com.notilog.ui.theme.LocalGlassTokens
+
 import com.notilog.ui.theme.NotilogTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -80,7 +78,11 @@ fun NotilogApp() {
         !route.startsWith("detail") && route != Screen.Blacklist.route
     } ?: true
 
-    GradientBackground {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
             containerColor = Color.Transparent,

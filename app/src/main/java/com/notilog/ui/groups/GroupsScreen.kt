@@ -19,8 +19,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.notilog.ui.theme.GlassCard
-import com.notilog.ui.theme.GlassSurface
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import com.notilog.ui.theme.Colors
 import com.notilog.ui.theme.StatusBadge
 import com.notilog.ui.feed.AppHeader
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -43,11 +44,11 @@ private val categoryIcons = mapOf(
 )
 
 private val categoryGradients = mapOf(
-    "Social" to listOf(Color(0xFF818CF8), Color(0xFF6366F1)),
-    "Banking" to listOf(Color(0xFF34D399), Color(0xFF10B981)),
-    "Shopping" to listOf(Color(0xFFF59E0B), Color(0xFFD97706)),
-    "System" to listOf(Color(0xFF94A3B8), Color(0xFF64748B)),
-    "Uncategorized" to listOf(Color(0xFFA78BFA), Color(0xFF8B5CF6)),
+    "Social" to listOf(Colors.MainBlue, Colors.Indigo),
+    "Banking" to listOf(Colors.Green, Colors.Emerald),
+    "Shopping" to listOf(Colors.Amber, Colors.Orange),
+    "System" to listOf(Colors.Slate, Colors.Slate.copy(alpha = 0.7f)),
+    "Uncategorized" to listOf(Colors.Purple, Colors.DeepViolet),
 )
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
@@ -89,9 +90,9 @@ fun GroupsScreen(
             }
             item {
                 if (categoryStats.isEmpty()) {
-                    GlassCard(
+                    Card(
                         modifier = Modifier.fillMaxWidth(),
-                        cornerRadius = 20.dp
+                        shape = RoundedCornerShape(20.dp)
                     ) {
                         Box(
                             modifier = Modifier
@@ -116,7 +117,7 @@ fun GroupsScreen(
                             ) {
                                 row.forEach { cat ->
                                     val gradient = categoryGradients[cat.category]
-                                        ?: listOf(Color(0xFF94A3B8), Color(0xFF64748B))
+                                        ?: listOf(Colors.Slate, Colors.Slate.copy(alpha = 0.7f))
                                     CategoryCard(
                                         category = cat.category,
                                         count = cat.count,
@@ -155,9 +156,13 @@ fun LargeChipsPanel(
     categoryStats: List<CategoryCount>,
     onCategoryClick: (String) -> Unit
 ) {
-    GlassCard(cornerRadius = 20.dp, shadowElevation = 8.dp, modifier = Modifier
-        .fillMaxWidth()
-        .padding(horizontal = 12.dp, vertical = 8.dp)) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+    ) {
         Column {
             Text("Large chips", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(12.dp))
             Spacer(Modifier.height(8.dp))
@@ -199,14 +204,14 @@ fun LargeChipItem(
     count: Int,
     onClick: () -> Unit
 ) {
-    GlassCard(
+    Card(
         onClick = onClick,
-        cornerRadius = 16.dp,
-        containerColor = Color(0xFF1F1F1F).copy(alpha = 0.85f),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color(0xFF1F1F1F).copy(alpha = 0.85f)),
         modifier = Modifier
             .height(60.dp)
             .width(110.dp),
-        shadowElevation = 6.dp
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -234,10 +239,10 @@ private fun CategoryCard(
     gradient: List<Color>,
     onClick: () -> Unit
 ) {
-    GlassCard(
+    Card(
         onClick = onClick,
-        cornerRadius = 20.dp,
-        shadowElevation = 8.dp
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
     ) {
         Column(
             modifier = Modifier
@@ -300,7 +305,10 @@ private fun CategoryCard(
 
 @Composable
 private fun AppCard(app: com.notilog.ui.groups.AppNotificationCount) {
-    GlassCard(cornerRadius = 20.dp, shadowElevation = 6.dp) {
+    Card(
+        shape = RoundedCornerShape(20.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+    ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()

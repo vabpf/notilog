@@ -25,10 +25,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import com.notilog.R
 
 private val LightColorScheme = lightColorScheme(
-    primary = Color(0xFF00428E),
+    primary = Color(0xFF3B82F6),
     onPrimary = Color(0xFFFFFFFF),
-    primaryContainer = Color(0xFF0059BB),
-    onPrimaryContainer = Color(0xFFC3D5FF),
+    primaryContainer = Color(0xFF3B82F6).copy(alpha = 0.12f),
+    onPrimaryContainer = Color(0xFF3B82F6),
     secondary = Color(0xFF4854BB),
     onSecondary = Color(0xFFFFFFFF),
     secondaryContainer = Color(0xFF8692FD),
@@ -56,10 +56,10 @@ private val LightColorScheme = lightColorScheme(
 )
 
 private val DarkColorScheme = darkColorScheme(
-    primary = Color(0xFFACC7FF),
-    onPrimary = Color(0xFF001A40),
-    primaryContainer = Color(0xFF004492),
-    onPrimaryContainer = Color(0xFFD7E2FF),
+    primary = Color(0xFF3B82F6),
+    onPrimary = Color(0xFFFFFFFF),
+    primaryContainer = Color(0xFF3B82F6).copy(alpha = 0.24f),
+    onPrimaryContainer = Color(0xFF3B82F6),
     secondary = Color(0xFFBDC2FF),
     onSecondary = Color(0xFF000965),
     secondaryContainer = Color(0xFF2E3AA2),
