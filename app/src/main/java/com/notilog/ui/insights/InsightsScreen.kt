@@ -8,18 +8,15 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.Notifications
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.positionInRoot
-import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -34,91 +31,44 @@ fun InsightsScreen(
     val insightsState by viewModel.insightsState.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
 
-    var headerBottomPx by remember { mutableStateOf(0) }
-    val density = LocalDensity.current
-    val headerBottomDp = with(density) { headerBottomPx.toDp() }
-
     Scaffold(
         topBar = {},
         containerColor = Color.Transparent
-    ) { _ ->
-        Box(modifier = Modifier.fillMaxSize()) {
-            if (headerBottomPx > 0) {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(top = headerBottomDp - 12.dp),
-                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-                    color = MaterialTheme.colorScheme.surface
-                ) {
-                    if (isLoading) {
-                        Box(
-                            modifier = Modifier.fillMaxSize(),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            CircularProgressIndicator(color = Colors.MainBlue)
-                        }
-                    } else {
-                        LazyColumn(
-                            contentPadding = PaddingValues(
-                                top = 24.dp,
-                                start = 16.dp,
-                                end = 16.dp,
-                                bottom = 132.dp
-                            ),
-                            verticalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            // Summary Cards
-                            item {
-                                SummaryCardsRow(
-                                    totalCount = insightsState.summary.totalCount,
-                                    todayCount = insightsState.summary.todayCount,
-                                    weekCount = insightsState.summary.weekCount
-                                )
-                            }
+    ) { innerPadding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            // Header - in normal flow
+            Text(
+                "Deep Insights",
+                style = MaterialTheme.typography.headlineMedium,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp)
+            )
 
-                            // Category Breakdown
-                            item {
-                                CategoryChartCard(
-                                    categories = insightsState.categoryInsights
-                                )
-                            }
-
-                            // Top Apps
-                            item {
-                                TopAppsCard(
-                                    apps = insightsState.topApps
-                                )
-                            }
-
-                            // Daily Trend
-                            item {
-                                DailyTrendCard(
-                                    dailyData = insightsState.dailyInsights
-                                )
-                            }
-                        }
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                color = MaterialTheme.colorScheme.surface
+            ) {
+                if (isLoading) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = Colors.MainBlue)
+                    }
+                } else {
+                    LazyColumn(
+                        contentPadding = PaddingValues(top = 24.dp, start = 16.dp, end = 16.dp, bottom = 132.dp),
+                        verticalArrangement = Arrangement.spacedBy(16.dp)
+                    ) {
+                        item { SummaryCardsRow(totalCount = insightsState.summary.totalCount, todayCount = insightsState.summary.todayCount, weekCount = insightsState.summary.weekCount) }
+                        item { CategoryChartCard(categories = insightsState.categoryInsights) }
+                        item { TopAppsCard(apps = insightsState.topApps) }
+                        item { DailyTrendCard(dailyData = insightsState.dailyInsights) }
                     }
                 }
-            }
-
-            // Floating header
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .statusBarsPadding()
-                    .padding(top = 12.dp, start = 24.dp, end = 24.dp)
-                    .onGloballyPositioned { coords ->
-                        headerBottomPx =
-                            (coords.positionInRoot().y + coords.size.height).toInt()
-                    }
-            ) {
-                Text(
-                    "Deep Insights",
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
             }
         }
     }
@@ -143,13 +93,13 @@ private fun SummaryCardsRow(
         SummaryCard(
             title = "Today",
             value = todayCount.toString(),
-            icon = Icons.Default.Settings,
+            icon = Icons.Rounded.Settings,
             modifier = Modifier.weight(1f)
         )
         SummaryCard(
             title = "This Week",
             value = weekCount.toString(),
-            icon = Icons.Default.Star,
+            icon = Icons.Rounded.Star,
             modifier = Modifier.weight(1f)
         )
     }
@@ -165,7 +115,7 @@ private fun SummaryCard(
     Surface(
         modifier = modifier.height(100.dp),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White,
+        color = MaterialTheme.colorScheme.surface,
         shadowElevation = 2.dp
     ) {
         Column(
@@ -202,7 +152,7 @@ private fun CategoryChartCard(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White,
+        color = MaterialTheme.colorScheme.surface,
         shadowElevation = 2.dp
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -287,7 +237,7 @@ private fun TopAppsCard(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White,
+        color = MaterialTheme.colorScheme.surface,
         shadowElevation = 2.dp
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -378,7 +328,7 @@ private fun DailyTrendCard(
     Surface(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
-        color = Color.White,
+        color = MaterialTheme.colorScheme.surface,
         shadowElevation = 2.dp
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -418,13 +368,28 @@ private fun DailyTrendCard(
                                     .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 4.dp))
                                     .background(Colors.MainBlue)
                             )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                day.date.takeLast(5),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
                         }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(8.dp))
+                Divider(
+                    thickness = 1.dp,
+                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.25f)
+                )
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    dailyData.forEach { day ->
+                        Text(
+                            text = formatAxisDate(day.date),
+                            modifier = Modifier.weight(1f),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1
+                        )
                     }
                 }
             }
@@ -434,4 +399,8 @@ private fun DailyTrendCard(
 
 private fun formatCategory(category: String): String {
     return category.replace("_", " ").lowercase().replaceFirstChar { it.uppercase() }
+}
+
+private fun formatAxisDate(raw: String): String {
+    return if (raw.length >= 10) "${raw.substring(5, 7)}/${raw.substring(8, 10)}" else raw
 }

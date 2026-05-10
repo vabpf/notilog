@@ -53,8 +53,7 @@ fun NotilogNavGraph(
             FeedScreen(
                 onNotificationClick = { systemId, tag ->
                     navController.navigate(Screen.Detail.createRoute(systemId, tag))
-                },
-                navController = navController
+                }
             )
         }
         composable(Screen.Insights.route) {

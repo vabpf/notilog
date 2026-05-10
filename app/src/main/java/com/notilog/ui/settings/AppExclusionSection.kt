@@ -8,9 +8,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -59,7 +59,7 @@ fun AppExclusionSection(
                     .background(MaterialTheme.colorScheme.primary)
             ) {
                 Icon(
-                    Icons.Default.Check,
+                    Icons.Rounded.Check,
                     contentDescription = "Add exclusion",
                     tint = MaterialTheme.colorScheme.onPrimary,
                     modifier = Modifier.size(20.dp)
@@ -77,12 +77,12 @@ fun AppExclusionSection(
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 placeholder = { Text("Search apps to exclude...") },
                 leadingIcon = {
-                    Icon(Icons.Default.Search, contentDescription = null)
+                    Icon(Icons.Rounded.Search, contentDescription = null)
                 },
                 trailingIcon = {
                     if (searchQuery.isNotEmpty()) {
                         IconButton(onClick = { searchQuery = "" }) {
-                            Icon(Icons.Default.Close, contentDescription = "Clear")
+                            Icon(Icons.Rounded.Close, contentDescription = "Clear")
                         }
                     }
                 },
@@ -170,7 +170,7 @@ fun ExcludedAppCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            AppIcon(packageName, "Uncategorized", size = 36)
+            AppIcon(packageName, size = 36)
             Text(
                 packageName,
                 modifier = Modifier.weight(1f),
@@ -187,7 +187,7 @@ fun ExcludedAppCard(
                 modifier = Modifier.size(32.dp)
             ) {
                 Icon(
-                    Icons.Default.Close,
+                    Icons.Rounded.Close,
                     contentDescription = "Remove exclusion",
                     tint = MaterialTheme.colorScheme.error,
                     modifier = Modifier.size(18.dp)

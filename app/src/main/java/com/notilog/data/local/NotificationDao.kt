@@ -32,6 +32,9 @@ interface NotificationDao {
     @Query("DELETE FROM notifications WHERE postTime < :threshold")
     suspend fun deleteOldNotifications(threshold: Long)
 
+    @Query("DELETE FROM notifications")
+    suspend fun deleteAllNotifications()
+
     @Query("DELETE FROM notifications WHERE isDeleted = 1 AND deletedAt < :threshold")
     suspend fun permanentDeleteOldTrash(threshold: Long)
 

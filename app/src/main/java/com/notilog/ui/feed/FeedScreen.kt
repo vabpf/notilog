@@ -4,8 +4,11 @@ import android.graphics.drawable.Drawable
 import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -35,6 +38,7 @@ import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.List
 import androidx.compose.material3.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Card
@@ -53,9 +57,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import dev.chrisbanes.haze.haze
-import dev.chrisbanes.haze.hazeChild
-import dev.chrisbanes.haze.HazeState
+import androidx.compose.ui.res.painterResource
+import com.notilog.ui.theme.LocalIsDarkTheme
+
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalContext
@@ -65,8 +69,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.res.painterResource
 import androidx.core.graphics.drawable.toBitmap
+import com.notilog.R
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.notilog.data.local.NotificationEntity
 import com.notilog.data.local.AppInfoEntry
@@ -86,7 +90,6 @@ private fun formatCategory(category: String): String {
 @Composable
 fun FeedScreen(
     onNotificationClick: (Int, String?) -> Unit = { _, _ -> },
-    navController: androidx.navigation.NavHostController? = null,
     viewModel: FeedViewModel = hiltViewModel()
 ) {
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -101,8 +104,6 @@ fun FeedScreen(
     val allApps by viewModel.allApps.collectAsState()
 
     var isFilterExpanded by remember { mutableStateOf(false) }
-
-    val hazeState = remember { HazeState() }
 
     var headerBottomPx by remember { mutableStateOf(0) }
     val density = androidx.compose.ui.platform.LocalDensity.current
@@ -128,9 +129,7 @@ fun FeedScreen(
                         )
                     }
                     LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .haze(state = hazeState),
+                        modifier = Modifier.fillMaxSize(),
                         state = androidx.compose.foundation.lazy.rememberLazyListState(),
                         contentPadding = PaddingValues(top = 8.dp, bottom = 132.dp),
 verticalArrangement = Arrangement.spacedBy(0.dp)
@@ -200,11 +199,11 @@ verticalArrangement = Arrangement.Top
             AnimatedVisibility(
                 visible = isFilterExpanded,
                 enter = expandVertically(
-                    animationSpec = tween(200)
-                ),
+                    animationSpec = tween(250, easing = FastOutSlowInEasing)
+                ) + fadeIn(animationSpec = tween(250)),
                 exit = shrinkVertically(
-                    animationSpec = tween(200)
-                )
+                    animationSpec = tween(200, easing = FastOutSlowInEasing)
+                ) + fadeOut(animationSpec = tween(200))
             ) {
                 FilterOptionsSection(
                     filterState = filterState,
@@ -215,7 +214,7 @@ verticalArrangement = Arrangement.Top
                     onShowAllApps = { /* TODO: Show app selection dialog */ },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(start = 16.dp, top = 8.dp, end = 16.dp, bottom = 0.dp)
+                        .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 0.dp)
                 )
             }
             QuickFilterBar(
@@ -338,67 +337,89 @@ fun FeedSearchSection(
     hasActiveFilters: Boolean,
     modifier: Modifier = Modifier
 ) {
-    Surface(
-        modifier = modifier
-            .padding(horizontal = 16.dp)
-            .height(52.dp),
-        shape = RoundedCornerShape(32.dp),
-        color = Color.White,
-        shadowElevation = 4.dp
+    val isDark = LocalIsDarkTheme.current
+    val barColor = if (isDark) MaterialTheme.colorScheme.surfaceVariant else Color.White
+    Box(
+        modifier = modifier.padding(horizontal = 16.dp)
     ) {
-        OutlinedTextField(
-            value = query,
-            onValueChange = onQueryChange,
-            modifier = Modifier.fillMaxSize(),
-            placeholder = {
-                Text(
-                    "Search notifications...",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
-                )
-            },
-            leadingIcon = {
-                Icon(
-                    Icons.Rounded.Search,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                )
-            },
-            trailingIcon = {
-                Box(
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    IconButton(
-                        onClick = onFilterClick,
-                        modifier = Modifier
-                            .size(48.dp)
-                            .align(Alignment.CenterEnd)
-                    ) {
-                        Icon(
-                            painter = painterResource(com.notilog.R.drawable.filter_list_24),
-                            contentDescription = "Filter",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
-                        )
-                    }
-                    if (hasActiveFilters) {
-                        Box(
-                            modifier = Modifier
-                                .align(Alignment.TopEnd)
-                                .offset(x = (-12).dp, y = 12.dp)
-                                .size(8.dp)
-                                .background(Color.Red, CircleShape)
-                        )
-                    }
-                }
-            },
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp)
+                .offset(y = 3.dp),
             shape = RoundedCornerShape(32.dp),
-            colors = TextFieldDefaults.outlinedTextFieldColors(
-                focusedBorderColor = Color.Transparent,
-                unfocusedBorderColor = Color.Transparent,
-                containerColor = Color.Transparent
-            ),
-            singleLine = true
-        )
+            color = Color.Transparent,
+            shadowElevation = 8.dp,
+            tonalElevation = 0.dp
+        ) {}
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+            shape = RoundedCornerShape(32.dp),
+            color = barColor
+        ) {
+            OutlinedTextField(
+                value = query,
+                onValueChange = onQueryChange,
+                modifier = Modifier.fillMaxSize(),
+                placeholder = {
+                    Text(
+                        "Search notifications...",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (isDark) Color.White.copy(alpha = 0.5f) else Color.Black.copy(alpha = 0.5f)
+                    )
+                },
+                leadingIcon = {
+                    Icon(
+                        Icons.Rounded.Search,
+                        contentDescription = null,
+                        tint = if (isDark) Color.White.copy(alpha = 0.4f) else Color.Black.copy(alpha = 0.4f)
+                    )
+                },
+                trailingIcon = {
+                    Box(
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        IconButton(
+                            onClick = onFilterClick,
+                            modifier = Modifier
+                                .size(48.dp)
+                                .align(Alignment.CenterEnd)
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.filter_list_24),
+                                contentDescription = "Filter",
+                                modifier = Modifier.size(24.dp),
+                                colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(
+                                    if (isDark) Color.White.copy(alpha = 0.6f) else Color.Black.copy(alpha = 0.6f)
+                                )
+                            )
+                        }
+                        if (hasActiveFilters) {
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopEnd)
+                                    .offset(x = (-12).dp, y = 12.dp)
+                                    .size(8.dp)
+                                    .background(MaterialTheme.colorScheme.error, CircleShape)
+                            )
+                        }
+                    }
+                },
+                shape = RoundedCornerShape(32.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent,
+                    focusedContainerColor = Color.Transparent,
+                    unfocusedContainerColor = Color.Transparent,
+                    focusedTextColor = if (isDark) Color.White else Color.Black,
+                    unfocusedTextColor = if (isDark) Color.White else Color.Black,
+                    cursorColor = MaterialTheme.colorScheme.primary
+                ),
+                singleLine = true
+            )
+        }
     }
 }
 
@@ -569,7 +590,7 @@ private fun ShadowChip(
 }
 
 @Composable
-fun AppIcon(packageName: String, category: String, size: Int = 40) {
+fun AppIcon(packageName: String, size: Int = 40) {
     val context = LocalContext.current
     var icon by remember { mutableStateOf<android.graphics.drawable.Drawable?>(null) }
     var loaded by remember { mutableStateOf(false) }
@@ -592,14 +613,14 @@ fun AppIcon(packageName: String, category: String, size: Int = 40) {
             .background(MaterialTheme.colorScheme.surfaceVariant),
         contentAlignment = Alignment.Center
     ) {
-        if (icon != null) {
+        icon?.let { drawable ->
             Image(
-                bitmap = icon!!.toBitmap().asImageBitmap(),
+                bitmap = drawable.toBitmap().asImageBitmap(),
                 contentDescription = null,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Fit
             )
-        } else {
+        } ?: run {
             Icon(
                 Icons.Rounded.Notifications,
                 contentDescription = null,
@@ -640,7 +661,7 @@ private fun NotificationItem(
             )
         }
 
-        AppIcon(notification.packageName, notification.category, size = 44)
+        AppIcon(notification.packageName, size = 44)
 
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Row(
@@ -760,7 +781,7 @@ private fun FilterOptionsSection(
     Surface(
         modifier = modifier,
         shape = RoundedCornerShape(16.dp),
-        color = Color.White,
+        color = MaterialTheme.colorScheme.surface,
         shadowElevation = 2.dp
     ) {
         Column(
@@ -805,7 +826,7 @@ private fun FilterOptionsSection(
                         shape = RoundedCornerShape(50),
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = Colors.MainBlue,
-                            selectedLabelColor = Color.White
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                         )
                     )
                 }
@@ -861,7 +882,7 @@ private fun FilterOptionsSection(
                             shape = RoundedCornerShape(50),
                             colors = FilterChipDefaults.filterChipColors(
                                 selectedContainerColor = Colors.MainBlue,
-                                selectedLabelColor = Color.White
+                                selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                             )
                         )
                     }
@@ -897,7 +918,7 @@ private fun FilterOptionsSection(
                         shape = RoundedCornerShape(50),
                         colors = FilterChipDefaults.filterChipColors(
                             selectedContainerColor = Colors.MainBlue,
-                            selectedLabelColor = Color.White
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary
                         )
                     )
                 }

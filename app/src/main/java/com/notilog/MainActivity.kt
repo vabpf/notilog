@@ -1,5 +1,6 @@
 package com.notilog
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -20,16 +21,21 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.Alignment
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -39,6 +45,8 @@ import androidx.navigation.compose.rememberNavController
 import com.notilog.ui.navigation.NotilogNavGraph
 import com.notilog.ui.navigation.Screen
 
+import com.notilog.ui.theme.ThemeMode
+import com.notilog.ui.theme.ThemePreferences
 import com.notilog.ui.theme.NotilogTheme
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -48,7 +56,28 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            NotilogTheme {
+            val prefs = remember {
+                applicationContext.getSharedPreferences("notilog_prefs", Context.MODE_PRIVATE)
+            }
+            var themeMode by remember { mutableStateOf(ThemePreferences.getThemeMode(prefs)) }
+            val isSystemDark = isSystemInDarkTheme()
+            val effectiveDarkTheme = when (themeMode) {
+                ThemeMode.SYSTEM -> isSystemDark
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+            }
+
+            DisposableEffect(prefs) {
+                val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+                    if (key == ThemePreferences.KEY_THEME_MODE) {
+                        themeMode = ThemePreferences.getThemeMode(prefs)
+                    }
+                }
+                prefs.registerOnSharedPreferenceChangeListener(listener)
+                onDispose { prefs.unregisterOnSharedPreferenceChangeListener(listener) }
+            }
+
+            NotilogTheme(darkTheme = effectiveDarkTheme) {
                 NotilogApp()
             }
         }
@@ -58,7 +87,7 @@ class MainActivity : ComponentActivity() {
 data class BottomNavItem(
     val screen: Screen,
     val label: String,
-    val iconRes: Int
+    val icon: ImageVector
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -69,15 +98,16 @@ fun NotilogApp() {
     val currentDestination = navBackStackEntry?.destination
 
     val bottomNavItems = listOf(
-        BottomNavItem(Screen.Feed, "Feed", com.notilog.R.drawable.ic_notification),
-        BottomNavItem(Screen.Insights, "Insights", com.notilog.R.drawable.pie_chart_24),
-        BottomNavItem(Screen.Settings, "Settings", com.notilog.R.drawable.settings_24)
+        BottomNavItem(Screen.Feed, "Feed", Icons.Rounded.Notifications),
+        BottomNavItem(Screen.Insights, "Insights", Icons.Rounded.Star),
+        BottomNavItem(Screen.Settings, "Settings", Icons.Rounded.Settings)
     )
 
     val showBottomBar = currentDestination?.route?.let { route ->
         !route.startsWith("detail") && route != Screen.Blacklist.route
     } ?: true
 
+    // Main app container
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -88,6 +118,7 @@ fun NotilogApp() {
             containerColor = Color.Transparent,
             bottomBar = {
                 if (showBottomBar) {
+                    // Capsule-shaped bottom navigation bar
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -110,9 +141,10 @@ fun NotilogApp() {
                             ) {
                                 bottomNavItems.forEach { item ->
                                     val isSelected = currentDestination?.hierarchy?.any { it.route == item.screen.route } == true
+                                    // Custom capsule-shaped navigation item
                                     CapsuleNavItem(
                                         label = item.label,
-                                        iconRes = item.iconRes,
+                                        icon = item.icon,
                                         isSelected = isSelected,
                                         onClick = {
                                             navController.navigate(item.screen.route) {
@@ -142,7 +174,7 @@ fun NotilogApp() {
 @Composable
 fun androidx.compose.foundation.layout.RowScope.CapsuleNavItem(
     label: String,
-    iconRes: Int,
+    icon: ImageVector,
     isSelected: Boolean,
     onClick: () -> Unit
 ) {
@@ -167,7 +199,7 @@ fun androidx.compose.foundation.layout.RowScope.CapsuleNavItem(
             verticalArrangement = Arrangement.spacedBy(2.dp)
         ) {
             Icon(
-                painter = painterResource(iconRes),
+                imageVector = icon,
                 contentDescription = label,
                 tint = iconColor,
                 modifier = Modifier.size(24.dp)

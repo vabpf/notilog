@@ -37,7 +37,7 @@ android {
     }
     kotlinOptions {
         jvmTarget = "17"
-        freeCompilerArgs += listOf("-Xopt-in=kotlin.RequiresOptIn", "-Xopt-in=androidx.compose.material3.ExperimentalMaterial3Api")
+        freeCompilerArgs += listOf("-opt-in=kotlin.RequiresOptIn", "-opt-in=androidx.compose.material3.ExperimentalMaterial3Api")
     }
     buildFeatures {
         compose = true
@@ -56,6 +56,9 @@ android {
             excludes += "/META-INF/ASL2.0"
         }
     }
+    lint {
+        baseline = file("lint-baseline.xml")
+    }
 }
 
 kotlin {
@@ -65,6 +68,7 @@ kotlin {
 dependencies {
 
     implementation("androidx.core:core-ktx:1.12.0")
+    implementation("androidx.appcompat:appcompat:1.7.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.6.2")
     implementation("androidx.activity:activity-compose:1.8.0")
     implementation(platform("androidx.compose:compose-bom:2023.10.01"))
@@ -96,6 +100,9 @@ dependencies {
     // Gson
     implementation("com.google.code.gson:gson:2.10.1")
 
+    
+
+    
     // Haze for glassmorphism
     implementation("dev.chrisbanes.haze:haze:0.6.0")
 

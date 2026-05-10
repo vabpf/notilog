@@ -12,17 +12,13 @@ import androidx.compose.material3.Typography
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
-import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.RoundedCornerShape
-import com.notilog.R
 
 private val LightColorScheme = lightColorScheme(
     primary = Color(0xFF3B82F6),
@@ -86,28 +82,12 @@ private val DarkColorScheme = darkColorScheme(
     surfaceTint = Color(0xFFACC7FF),
 )
 
-val LocalGlassTokens = compositionLocalOf {
-    GlassTokens(
-        glassBackground = Color(0xB2FFFFFF),
-        glassBorder = Color(0x80FFFFFF),
-        glassElevation = 4.dp,
-        blurAmount = 16.dp,
-        cornerRadius = 16.dp,
-        ambientGlow = Color(0x0D00428E),
-    )
-}
 
-data class GlassTokens(
-    val glassBackground: Color,
-    val glassBorder: Color,
-    val glassElevation: Dp,
-    val blurAmount: Dp,
-    val cornerRadius: Dp,
-    val ambientGlow: Color,
-)
 
 // System font family - fallback to ensure compatibility
 val PlusJakartaSans = FontFamily.Default
+
+val LocalIsDarkTheme = compositionLocalOf { false }
 
 @Composable
 fun NotilogTheme(
@@ -124,27 +104,7 @@ fun NotilogTheme(
         else -> LightColorScheme
     }
 
-    val glassTokens = if (darkTheme) {
-        GlassTokens(
-            glassBackground = Color(0xB20F1114),
-            glassBorder = Color(0x1AFFFFFF),
-            glassElevation = 2.dp,
-            blurAmount = 16.dp,
-            cornerRadius = 16.dp,
-            ambientGlow = Color(0x1AACC7FF),
-        )
-    } else {
-        GlassTokens(
-            glassBackground = Color(0xB2FFFFFF),
-            glassBorder = Color(0x80FFFFFF),
-            glassElevation = 4.dp,
-            blurAmount = 16.dp,
-            cornerRadius = 16.dp,
-            ambientGlow = Color(0x0D00428E),
-        )
-    }
-
-    // Shapes aligned with Ergo-Luxe: large radii for a premium rounded feel
+    // Shapes: large radii for a premium rounded feel
     val ErgoShapes = Shapes(
         small = RoundedCornerShape(8.dp),
         medium = RoundedCornerShape(16.dp),
@@ -156,10 +116,9 @@ fun NotilogTheme(
         typography = NotilogTypography,
         shapes = ErgoShapes,
         content = {
-            CompositionLocalProvider(
-                LocalGlassTokens provides glassTokens,
-                content = content
-            )
+            CompositionLocalProvider(LocalIsDarkTheme provides darkTheme) {
+                content()
+            }
         }
     )
 }

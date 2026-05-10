@@ -26,7 +26,10 @@ class GroupsViewModel @Inject constructor(
             .map { (cat, items) -> CategoryCount(cat, items.size) }
             .sortedByDescending { it.count }
         val topApps = list.groupBy { it.packageName }
-            .map { (pkg, items) -> AppNotificationCount(pkg, items.first().appName, items.size) }
+            .mapNotNull { (pkg, items) ->
+                val firstItem = items.firstOrNull() ?: return@mapNotNull null
+                AppNotificationCount(pkg, firstItem.appName, items.size)
+            }
             .sortedByDescending { it.count }
             .take(10)
         GroupedStats(categories, topApps)
@@ -36,4 +39,3 @@ class GroupsViewModel @Inject constructor(
 
     val topApps: Flow<List<AppNotificationCount>> = groupedStats.map { it.topApps }
 }
-

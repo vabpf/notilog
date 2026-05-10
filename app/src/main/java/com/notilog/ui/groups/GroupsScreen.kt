@@ -28,19 +28,19 @@ import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material.icons.filled.Face
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.List
-import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Face
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.List
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.ui.unit.dp
 
 private val categoryIcons = mapOf(
-    "Social" to Icons.Default.Face,
-    "Banking" to Icons.Default.Check,
-    "Shopping" to Icons.Default.List,
-    "System" to Icons.Default.Settings,
-    "Uncategorized" to Icons.Default.Info,
+    "Social" to Icons.Rounded.Face,
+    "Banking" to Icons.Rounded.Check,
+    "Shopping" to Icons.Rounded.List,
+    "System" to Icons.Rounded.Settings,
+    "Uncategorized" to Icons.Rounded.Info,
 )
 
 private val categoryGradients = mapOf(
@@ -207,7 +207,7 @@ fun LargeChipItem(
     Card(
         onClick = onClick,
         shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF1F1F1F).copy(alpha = 0.85f)),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         modifier = Modifier
             .height(60.dp)
             .width(110.dp),
@@ -218,15 +218,15 @@ fun LargeChipItem(
             modifier = Modifier.padding(horizontal = 12.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.List,
+                imageVector = Icons.Rounded.List,
                 contentDescription = null,
-                tint = Color.White,
+                tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(20.dp)
             )
             Spacer(Modifier.width(8.dp))
-            Text(label, color = Color.White, fontWeight = FontWeight.Medium, style = MaterialTheme.typography.bodyMedium)
+            Text(label, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Medium, style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.weight(1f))
-            Text(count.toString(), color = Color.White, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall)
+            Text(count.toString(), color = MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelSmall)
         }
     }
 }
@@ -258,26 +258,30 @@ private fun CategoryCard(
                     modifier = Modifier
                         .size(44.dp)
                         .clip(RoundedCornerShape(12.dp))
-                        .background(Brush.linearGradient(colors = gradient))
-                        .shadow(
-                            elevation = 6.dp,
-                            shape = RoundedCornerShape(12.dp),
-                            ambientColor = gradient.first().copy(alpha = 0.3f),
-                            spotColor = gradient.first().copy(alpha = 0.4f),
-                        ),
+                    .background(Brush.linearGradient(colors = gradient))
+                    .shadow(
+                        elevation = 6.dp,
+                        shape = RoundedCornerShape(12.dp),
+                        ambientColor = gradient.firstOrNull()?.copy(alpha = 0.3f)
+                            ?: MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
+                        spotColor = gradient.firstOrNull()?.copy(alpha = 0.4f)
+                            ?: MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
+                    ),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = categoryIcons[category] ?: Icons.Default.Info,
+                        imageVector = categoryIcons[category] ?: Icons.Rounded.Info,
                         contentDescription = category,
-                        tint = Color.White,
+                        tint = MaterialTheme.colorScheme.onPrimary,
                         modifier = Modifier.size(24.dp)
                     )
                 }
                 Badge(
                     modifier = Modifier.padding(end = 4.dp),
-                    containerColor = gradient.first().copy(alpha = 0.15f),
-                    contentColor = gradient.first()
+                    containerColor = gradient.firstOrNull()?.copy(alpha = 0.15f)
+                        ?: MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                    contentColor = gradient.firstOrNull()
+                        ?: MaterialTheme.colorScheme.primary
                 ) {
                     Text(
                         text = "$count",

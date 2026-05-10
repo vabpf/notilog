@@ -5,8 +5,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -21,6 +21,7 @@ import com.notilog.ui.feed.AppIcon
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import com.notilog.ui.theme.StatusBadge
+import com.notilog.ui.theme.Colors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -43,7 +44,7 @@ fun BlacklistScreen(
                     },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.Rounded.ArrowBack, contentDescription = "Back")
                         }
                     },
                     colors = TopAppBarDefaults.topAppBarColors(
@@ -69,7 +70,7 @@ fun BlacklistScreen(
                     ) {
                         StatusBadge(
                             text = "All clear",
-                            color = Color(0xFF34D399)
+                            color = Colors.Success
                         )
                         Text(
                             "No blacklisted apps",
@@ -111,7 +112,7 @@ fun BlacklistedAppCard(packageName: String, onRemove: () -> Unit) {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            AppIcon(packageName, "Uncategorized", size = 40)
+            AppIcon(packageName, size = 40)
             Text(
                 packageName,
                 modifier = Modifier.weight(1f),
@@ -125,7 +126,7 @@ fun BlacklistedAppCard(packageName: String, onRemove: () -> Unit) {
             )
             IconButton(onClick = onRemove) {
                 Icon(
-                    Icons.Default.Delete,
+                    Icons.Rounded.Delete,
                     contentDescription = "Remove",
                     tint = MaterialTheme.colorScheme.error
                 )

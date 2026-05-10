@@ -7,6 +7,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.work.*
 import com.notilog.data.local.NotificationDao
+import com.notilog.ui.theme.ThemeMode
+import com.notilog.ui.theme.ThemePreferences
 import com.notilog.worker.CleanupWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -34,6 +36,8 @@ class SettingsViewModel @Inject constructor(
 
     private val _hasNotificationAccess = MutableStateFlow(checkNotificationAccess())
     val hasNotificationAccess: StateFlow<Boolean> = _hasNotificationAccess.asStateFlow()
+    private val _themeMode = MutableStateFlow(ThemePreferences.getThemeMode(prefs))
+    val themeMode: StateFlow<ThemeMode> = _themeMode.asStateFlow()
 
     private fun checkNotificationAccess(): Boolean {
         val pkgName = context.packageName
@@ -72,6 +76,11 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
+    fun setThemeMode(mode: ThemeMode) {
+        _themeMode.value = mode
+        ThemePreferences.setThemeMode(prefs, mode)
+    }
+
     private fun scheduleCleanup() {
         val request = PeriodicWorkRequestBuilder<CleanupWorker>(24, TimeUnit.HOURS)
             .setConstraints(
@@ -98,6 +107,12 @@ class SettingsViewModel @Inject constructor(
             val days = _retentionDays.value
             val threshold = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days.toLong())
             notificationDao.deleteOldNotifications(threshold)
+        }
+    }
+
+    fun clearAllData() {
+        viewModelScope.launch {
+            notificationDao.deleteAllNotifications()
         }
     }
 }

@@ -7,10 +7,10 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.Refresh
-import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -61,14 +61,18 @@ fun AdvancedFilterScreen(
                     ),
                     elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
                 ) {
-                    Icon(Icons.Default.Check, contentDescription = null)
+                    Icon(Icons.Rounded.Check, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
                     Text("Apply Filters (142)", style = MaterialTheme.typography.titleMedium)
                 }
             }
         }
-    ) { _ ->
-        Box(modifier = Modifier.fillMaxSize()) {
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
             if (headerBottomPx > 0) {
                 Surface(
                     modifier = Modifier
@@ -117,7 +121,7 @@ fun AdvancedFilterScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(onClick = onBack) {
-                    Icon(Icons.Default.Close, contentDescription = "Close")
+                    Icon(Icons.Rounded.Close, contentDescription = "Close")
                 }
                 Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
                     Text(
@@ -143,7 +147,7 @@ private fun FilterSearchSection(query: String, onQueryChange: (String) -> Unit) 
         onValueChange = onQueryChange,
         modifier = Modifier.fillMaxWidth(),
         placeholder = { Text("Search senders or keywords...") },
-        leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+        leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
         shape = RoundedCornerShape(32.dp),
         colors = TextFieldDefaults.outlinedTextFieldColors(
             focusedBorderColor = MaterialTheme.colorScheme.primary,
@@ -180,7 +184,7 @@ private fun AppSelectionSection() {
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
-                            Icons.Default.Refresh,
+                            Icons.Rounded.Refresh,
                             contentDescription = null,
                             tint = if (app == "Mail") MaterialTheme.colorScheme.onPrimaryContainer
                                    else MaterialTheme.colorScheme.onSurfaceVariant
