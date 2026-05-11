@@ -80,17 +80,29 @@ fun SettingsScreen(
                             SettingsRow(
                                 icon = Icons.Rounded.Delete,
                                 title = "Auto-delete logs",
-                                subtitle = "Remove logs older than $retentionDays days",
-                                action = { Switch(checked = autoCleanup, onCheckedChange = viewModel::setAutoCleanup) }
+                                subtitle = if (autoCleanup) "Notifications are removed automatically" else "Enable to remove old notifications automatically",
+                                action = {
+                                    Switch(
+                                        checked = autoCleanup,
+                                        onCheckedChange = { enabled ->
+                                            viewModel.setAutoCleanup(enabled)
+                                            if (enabled) {
+                                                showRetentionDialog = true
+                                            }
+                                        }
+                                    )
+                                }
                             )
-                            SettingsDivider()
-                            SettingsRow(
-                                icon = Icons.Rounded.Refresh,
-                                title = "Retention period",
-                                subtitle = "$retentionDays days",
-                                showChevron = true,
-                                onClick = { showRetentionDialog = true }
-                            )
+                            if (autoCleanup) {
+                                SettingsDivider()
+                                SettingsRow(
+                                    icon = Icons.Rounded.Refresh,
+                                    title = "Delete after",
+                                    subtitle = "$retentionDays days",
+                                    showChevron = true,
+                                    onClick = { showRetentionDialog = true }
+                                )
+                            }
                             SettingsDivider()
                             SettingsRow(
                                 icon = Icons.Rounded.Settings,

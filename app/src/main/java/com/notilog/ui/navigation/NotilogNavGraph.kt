@@ -1,5 +1,6 @@
 package com.notilog.ui.navigation
 
+import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -24,8 +25,9 @@ sealed class Screen(val route: String) {
     object Insights : Screen("insights")
     object Settings : Screen("settings")
     object Blacklist : Screen("blacklist")
-    object Detail : Screen("detail/{systemId}/{tag}") {
-        fun createRoute(systemId: Int, tag: String?) = "detail/$systemId/${tag ?: "null"}"
+    object Detail : Screen("detail/{packageName}/{systemId}/{tag}") {
+        fun createRoute(packageName: String, systemId: Int, tag: String?) =
+            "detail/${Uri.encode(packageName)}/$systemId/${Uri.encode(tag ?: "null")}"
     }
 }
 
@@ -51,8 +53,8 @@ fun NotilogNavGraph(
                 }
             }
             FeedScreen(
-                onNotificationClick = { systemId, tag ->
-                    navController.navigate(Screen.Detail.createRoute(systemId, tag))
+                onNotificationClick = { packageName, systemId, tag ->
+                    navController.navigate(Screen.Detail.createRoute(packageName, systemId, tag))
                 }
             )
         }
@@ -77,15 +79,19 @@ fun NotilogNavGraph(
         composable(
             route = Screen.Detail.route,
             arguments = listOf(
+                navArgument("packageName") { type = NavType.StringType },
                 navArgument("systemId") { type = NavType.IntType },
                 navArgument("tag") { type = NavType.StringType; nullable = true }
             )
         ) { backStackEntry ->
+            val packageName = backStackEntry.arguments?.getString("packageName")?.let(Uri::decode).orEmpty()
             val systemId = backStackEntry.arguments?.getInt("systemId") ?: 0
             val tag = backStackEntry.arguments?.getString("tag").let {
-                if (it == "null") null else it
+                val decoded = it?.let(Uri::decode)
+                if (decoded == "null") null else decoded
             }
             DetailScreen(
+                packageName = packageName,
                 systemId = systemId,
                 tag = tag,
                 onBack = { navController.popBackStack() }

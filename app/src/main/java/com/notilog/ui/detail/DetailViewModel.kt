@@ -18,8 +18,8 @@ class DetailViewModel @Inject constructor(
     private val blacklistedAppDao: BlacklistedAppDao
 ) : ViewModel() {
 
-    fun getVersions(systemId: Int, tag: String?): Flow<List<NotificationEntity>> {
-        return notificationDao.getVersionsBySystemId(systemId, tag)
+    fun getVersions(packageName: String, systemId: Int, tag: String?): Flow<List<NotificationEntity>> {
+        return notificationDao.getVersionsBySystemId(packageName, systemId, tag)
     }
 
     fun isBlacklisted(packageName: String): Flow<Boolean> {
@@ -36,11 +36,9 @@ class DetailViewModel @Inject constructor(
         }
     }
 
-    fun deleteAllVersions(systemId: Int, tag: String?) {
+    fun deleteAllVersions(packageName: String, systemId: Int, tag: String?) {
         viewModelScope.launch {
-            // Room doesn't have a direct deleteBySystemId that isn't a query
-            // We can add it to DAO or use a query
-            notificationDao.deleteBySystemId(systemId, tag)
+            notificationDao.deleteBySystemId(packageName, systemId, tag)
         }
     }
 }

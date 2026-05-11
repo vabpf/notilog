@@ -53,17 +53,17 @@ interface NotificationDao {
     @Query("SELECT category, COUNT(*) as count FROM notifications WHERE isDeleted = 0 GROUP BY category ORDER BY count DESC")
     fun getCategoryNotificationCounts(): Flow<List<CategoryCountEntry>>
 
-    @Query("UPDATE notifications SET isDismissed = 1 WHERE systemId = :systemId AND (tag = :tag OR (tag IS NULL AND :tag IS NULL))")
-    suspend fun markAsDismissed(systemId: Int, tag: String?)
+    @Query("UPDATE notifications SET isDismissed = 1 WHERE packageName = :packageName AND systemId = :systemId AND (tag = :tag OR (tag IS NULL AND :tag IS NULL))")
+    suspend fun markAsDismissed(packageName: String, systemId: Int, tag: String?)
 
-    @Query("SELECT * FROM notifications WHERE systemId = :systemId AND (tag = :tag OR (tag IS NULL AND :tag IS NULL)) ORDER BY postTime DESC LIMIT 1")
-    suspend fun getLatestBySystemId(systemId: Int, tag: String?): NotificationEntity?
+    @Query("SELECT * FROM notifications WHERE packageName = :packageName AND systemId = :systemId AND (tag = :tag OR (tag IS NULL AND :tag IS NULL)) ORDER BY postTime DESC LIMIT 1")
+    suspend fun getLatestBySystemId(packageName: String, systemId: Int, tag: String?): NotificationEntity?
 
-    @Query("SELECT * FROM notifications WHERE systemId = :systemId AND (tag = :tag OR (tag IS NULL AND :tag IS NULL)) ORDER BY postTime DESC")
-    fun getVersionsBySystemId(systemId: Int, tag: String?): Flow<List<NotificationEntity>>
+    @Query("SELECT * FROM notifications WHERE packageName = :packageName AND systemId = :systemId AND (tag = :tag OR (tag IS NULL AND :tag IS NULL)) ORDER BY postTime DESC")
+    fun getVersionsBySystemId(packageName: String, systemId: Int, tag: String?): Flow<List<NotificationEntity>>
 
-    @Query("DELETE FROM notifications WHERE systemId = :systemId AND (tag = :tag OR (tag IS NULL AND :tag IS NULL))")
-    suspend fun deleteBySystemId(systemId: Int, tag: String?)
+    @Query("DELETE FROM notifications WHERE packageName = :packageName AND systemId = :systemId AND (tag = :tag OR (tag IS NULL AND :tag IS NULL))")
+    suspend fun deleteBySystemId(packageName: String, systemId: Int, tag: String?)
 
     @Query("SELECT packageName, appName, MAX(postTime) as lastPostTime FROM notifications WHERE isDeleted = 0 GROUP BY packageName ORDER BY MAX(postTime) DESC LIMIT :limit")
     fun getRecentApps(limit: Int): Flow<List<AppInfoEntry>>

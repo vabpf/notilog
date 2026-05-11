@@ -89,7 +89,7 @@ private fun formatCategory(category: String): String {
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalFoundationApi::class)
 @Composable
 fun FeedScreen(
-    onNotificationClick: (Int, String?) -> Unit = { _, _ -> },
+    onNotificationClick: (String, Int, String?) -> Unit = { _, _, _ -> },
     viewModel: FeedViewModel = hiltViewModel()
 ) {
     val searchQuery by viewModel.searchQuery.collectAsState()
@@ -152,7 +152,7 @@ verticalArrangement = Arrangement.spacedBy(0.dp)
                                             if (isSelectionMode) {
                                                 viewModel.toggleSelection(notification.id)
                                             } else {
-                                                onNotificationClick(notification.systemId, notification.tag)
+                                                onNotificationClick(notification.packageName, notification.systemId, notification.tag)
                                             }
                                         },
                                         onLongClick = {

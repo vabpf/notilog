@@ -43,15 +43,15 @@ import java.util.Locale
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun DetailScreen(
+    packageName: String,
     systemId: Int,
     tag: String?,
     onBack: () -> Unit = {},
     viewModel: DetailViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current
-    val versions by viewModel.getVersions(systemId, tag).collectAsState(initial = emptyList())
+    val versions by viewModel.getVersions(packageName, systemId, tag).collectAsState(initial = emptyList())
     val appName = versions.firstOrNull()?.appName ?: "Unknown App"
-    val packageName = versions.firstOrNull()?.packageName ?: ""
     val isBlacklisted by viewModel.isBlacklisted(packageName).collectAsState(initial = false)
     var showDeleteDialog by remember { mutableStateOf(false) }
 
@@ -199,7 +199,7 @@ fun DetailScreen(
                 title = { Text("Delete All Versions?") },
                 text = { Text("This will permanently delete all ${versions.size} recorded versions of notifications from this app. This action cannot be undone.") },
                 confirmButton = {
-                    TextButton(onClick = { viewModel.deleteAllVersions(systemId, tag); showDeleteDialog = false; onBack() }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Delete All") }
+                    TextButton(onClick = { viewModel.deleteAllVersions(packageName, systemId, tag); showDeleteDialog = false; onBack() }, colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)) { Text("Delete All") }
                 },
                 dismissButton = { TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") } }
             )

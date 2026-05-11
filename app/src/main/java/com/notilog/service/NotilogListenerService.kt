@@ -47,7 +47,7 @@ class NotilogListenerService : NotificationListenerService() {
 
         scope.launch {
             // Deduplication logic
-            val latest = notificationDao.getLatestBySystemId(sbn.id, sbn.tag)
+            val latest = notificationDao.getLatestBySystemId(packageName, sbn.id, sbn.tag)
             if (latest != null && latest.title == title && latest.textContent == text) {
                 // Ignore exact duplicates
                 return@launch
@@ -71,7 +71,7 @@ class NotilogListenerService : NotificationListenerService() {
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
         scope.launch {
-            notificationDao.markAsDismissed(sbn.id, sbn.tag)
+            notificationDao.markAsDismissed(sbn.packageName, sbn.id, sbn.tag)
         }
     }
 
