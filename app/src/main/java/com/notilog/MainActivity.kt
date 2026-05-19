@@ -104,7 +104,7 @@ fun NotilogApp() {
     )
 
     val showBottomBar = currentDestination?.route?.let { route ->
-        !route.startsWith("detail") && route != Screen.Blacklist.route
+        !route.startsWith("detail") && route != Screen.Blacklist.route && route != Screen.Trash.route
     } ?: true
 
     // Main app container

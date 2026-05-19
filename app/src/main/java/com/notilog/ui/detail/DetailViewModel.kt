@@ -41,4 +41,10 @@ class DetailViewModel @Inject constructor(
             notificationDao.deleteBySystemId(packageName, systemId, tag)
         }
     }
+
+    fun deleteVersion(id: Long) {
+        viewModelScope.launch {
+            notificationDao.deleteById(id)
+        }
+    }
 }

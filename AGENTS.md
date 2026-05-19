@@ -3,8 +3,7 @@
 ## Build & Install
 
 ```bash
-./gradlew assembleDebug
-/mnt/d/Apps/Android/Sdk/platform-tools/adb.exe install app/build/outputs/apk/debug/app-debug.apk
+./gradlew assembleDebug && /mnt/d/Apps/Android/Sdk/platform-tools/adb.exe install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
 ## Tech Stack

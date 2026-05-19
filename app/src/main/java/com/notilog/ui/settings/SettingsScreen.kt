@@ -1,9 +1,14 @@
 package com.notilog.ui.settings
 
+import android.content.Intent
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Delete
@@ -18,47 +23,129 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.notilog.ui.theme.ThemeMode
+import java.io.IOException
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onManageBlacklist: () -> Unit = {},
-    onBack: () -> Unit = {},
+    onManageTrash: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     val autoCleanup by viewModel.autoCleanupEnabled.collectAsState()
     val retentionDays by viewModel.retentionDays.collectAsState()
     val themeMode by viewModel.themeMode.collectAsState()
+    val backupEnabled by viewModel.backupEnabled.collectAsState()
+    val backupProvider by viewModel.backupProvider.collectAsState()
+    val backupFrequency by viewModel.backupFrequency.collectAsState()
+    val backupFolderUri by viewModel.backupFolderUri.collectAsState()
+    val settingsListState = rememberLazyListState()
+    val showHeaderShadow by remember {
+        derivedStateOf {
+            settingsListState.firstVisibleItemIndex > 0 || settingsListState.firstVisibleItemScrollOffset > 0
+        }
+    }
     var showThemeModeDialog by remember { mutableStateOf(false) }
     var showRetentionDialog by remember { mutableStateOf(false) }
     var showClearAllDialog by remember { mutableStateOf(false) }
+    var showBackupProviderDialog by remember { mutableStateOf(false) }
+    var showBackupFrequencyDialog by remember { mutableStateOf(false) }
+    var pendingEnableAutoBackup by remember { mutableStateOf(false) }
+    var pendingSaveLabel by remember { mutableStateOf("Export data") }
 
-    Scaffold(topBar = {}, containerColor = Color.Transparent) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            // Header - in normal flow
-            Text(
-                "Settings",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 16.dp)
-            )
+    val saveCsvLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/csv")
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        coroutineScope.launch {
+            try {
+                val csv = viewModel.buildExportCsv()
+                val outputStream = context.contentResolver.openOutputStream(uri)
+                    ?: throw IOException("Unable to open destination stream")
+                outputStream.bufferedWriter().use { writer ->
+                    writer.write(csv)
+                }
+                Toast.makeText(context, "$pendingSaveLabel completed", Toast.LENGTH_SHORT).show()
+            } catch (error: IOException) {
+                Toast.makeText(context, "$pendingSaveLabel failed", Toast.LENGTH_SHORT).show()
+            } catch (error: SecurityException) {
+                Toast.makeText(context, "No permission to write selected file", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
+    val importDataLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) return@rememberLauncherForActivityResult
+        coroutineScope.launch {
+            try {
+                val inputStream = context.contentResolver.openInputStream(uri)
+                    ?: throw IOException("Unable to open source stream")
+                val content = inputStream.bufferedReader().use { reader -> reader.readText() }
+                val importedCount = viewModel.importData(content)
+                Toast.makeText(context, "Imported $importedCount notifications", Toast.LENGTH_SHORT).show()
+            } catch (error: IOException) {
+                Toast.makeText(context, "Import failed", Toast.LENGTH_SHORT).show()
+            } catch (error: SecurityException) {
+                Toast.makeText(context, "No permission to read selected file", Toast.LENGTH_SHORT).show()
+            } catch (error: IllegalArgumentException) {
+                Toast.makeText(context, "Unsupported import format", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    val backupFolderLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        val uri = result.data?.data ?: return@rememberLauncherForActivityResult
+        val flags = result.data?.flags ?: 0
+        val persistableFlags = flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+        try {
+            context.contentResolver.takePersistableUriPermission(uri, persistableFlags)
+        } catch (_: SecurityException) {
+            Toast.makeText(context, "Could not keep folder permission", Toast.LENGTH_SHORT).show()
+            return@rememberLauncherForActivityResult
+        }
+        viewModel.setBackupFolderUri(uri)
+        Toast.makeText(context, "Backup folder selected", Toast.LENGTH_SHORT).show()
+        if (pendingEnableAutoBackup) {
+            val enabled = viewModel.setBackupEnabled(true)
+            pendingEnableAutoBackup = false
+            if (!enabled) {
+                Toast.makeText(context, "Backup folder is required to enable auto backup", Toast.LENGTH_SHORT).show()
+            } else {
+                showBackupProviderDialog = true
+                showBackupFrequencyDialog = true
+            }
+        }
+    }
+
+    Scaffold(topBar = {}, containerColor = Color.Transparent) {
+        Box(modifier = Modifier.fillMaxSize()) {
             Surface(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = 52.dp),
                 shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
                 color = MaterialTheme.colorScheme.surface
             ) {
                 LazyColumn(
-                    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 20.dp),
+                    state = settingsListState,
+                    contentPadding = PaddingValues(top = 24.dp, start = 16.dp, end = 16.dp, bottom = 132.dp),
                     verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
                     item {
@@ -119,8 +206,112 @@ fun SettingsScreen(
                             SettingsRow(
                                 icon = Icons.Rounded.Refresh,
                                 title = "Export Data",
-                                subtitle = "Not implemented yet",
-                                showChevron = false
+                                subtitle = "Save notifications as CSV",
+                                showChevron = true,
+                                onClick = {
+                                    pendingSaveLabel = "Export data"
+                                    saveCsvLauncher.launch(timestampedCsvName("notilog_export"))
+                                }
+                            )
+                            SettingsDivider()
+                            SettingsRow(
+                                icon = Icons.Rounded.List,
+                                title = "Import Data",
+                                subtitle = "Restore notifications from CSV or JSON",
+                                showChevron = true,
+                                onClick = {
+                                    importDataLauncher.launch(arrayOf("text/*", "application/json"))
+                                }
+                            )
+                            SettingsDivider()
+                            SettingsRow(
+                                icon = Icons.Rounded.Refresh,
+                                title = "Auto Backup Data",
+                                subtitle = when {
+                                    backupEnabled -> "Enabled · ${backupFrequency.label}"
+                                    backupFolderUri == null -> "Disabled · Folder required"
+                                    else -> "Disabled"
+                                },
+                                action = {
+                                    Switch(
+                                        checked = backupEnabled,
+                                        onCheckedChange = { enabled ->
+                                            if (enabled) {
+                                                if (backupFolderUri == null) {
+                                                    pendingEnableAutoBackup = true
+                                                    val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+                                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                                                        addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+                                                    }
+                                                    backupFolderLauncher.launch(intent)
+                                                } else {
+                                                    viewModel.setBackupEnabled(true)
+                                                    showBackupProviderDialog = true
+                                                    showBackupFrequencyDialog = true
+                                                }
+                                            } else {
+                                                pendingEnableAutoBackup = false
+                                                viewModel.setBackupEnabled(false)
+                                            }
+                                        }
+                                    )
+                                }
+                            )
+                            if (backupEnabled) {
+                                SettingsDivider()
+                                SettingsRow(
+                                    icon = Icons.Rounded.List,
+                                    title = "Backup Provider",
+                                    subtitle = backupProvider.label,
+                                    showChevron = true,
+                                    onClick = { showBackupProviderDialog = true }
+                                )
+                                SettingsDivider()
+                                SettingsRow(
+                                    icon = Icons.Rounded.Refresh,
+                                    title = "Backup Frequency",
+                                    subtitle = backupFrequency.label,
+                                    showChevron = true,
+                                    onClick = { showBackupFrequencyDialog = true }
+                                )
+                                SettingsDivider()
+                                SettingsRow(
+                                    icon = Icons.Rounded.Settings,
+                                    title = "Backup Folder",
+                                    subtitle = if (backupFolderUri == null) "Not selected" else "Selected",
+                                    showChevron = true,
+                                    onClick = {
+                                        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                                            addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+                                        }
+                                        backupFolderLauncher.launch(intent)
+                                    }
+                                )
+                                SettingsDivider()
+                                SettingsRow(
+                                    icon = Icons.Rounded.Settings,
+                                    title = "Backup Now",
+                                    subtitle = "Create backup file for ${backupProvider.label}",
+                                    showChevron = true,
+                                    onClick = {
+                                        val prefix = if (backupProvider == BackupProvider.GOOGLE_DRIVE) {
+                                            "notilog_backup_google"
+                                        } else {
+                                            "notilog_backup_onedrive"
+                                        }
+                                        pendingSaveLabel = "${backupProvider.label} backup"
+                                        saveCsvLauncher.launch(timestampedCsvName(prefix))
+                                    }
+                                )
+                            }
+                            SettingsDivider()
+                            SettingsRow(
+                                icon = Icons.Rounded.Delete,
+                                title = "Trash",
+                                subtitle = "View and restore deleted notifications",
+                                showChevron = true,
+                                onClick = onManageTrash
                             )
                             SettingsDivider()
                             SettingsRow(
@@ -155,6 +346,13 @@ fun SettingsScreen(
                     item { Spacer(Modifier.height(100.dp)) }
                 }
             }
+            FloatingSettingsHeader(
+                title = "Settings",
+                showShadow = showHeaderShadow,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 16.dp)
+            )
         }
     }
 
@@ -260,6 +458,88 @@ fun SettingsScreen(
             }
         )
     }
+
+    if (showBackupProviderDialog) {
+        AlertDialog(
+            onDismissRequest = { showBackupProviderDialog = false },
+            title = { Text("Choose backup location") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    BackupProvider.entries.forEach { provider ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.setBackupProvider(provider)
+                                    showBackupProviderDialog = false
+                                }
+                                .padding(vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = provider == backupProvider,
+                                onClick = {
+                                    viewModel.setBackupProvider(provider)
+                                    showBackupProviderDialog = false
+                                }
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = provider.label,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showBackupProviderDialog = false }) {
+                    Text("Close")
+                }
+            }
+        )
+    }
+
+    if (showBackupFrequencyDialog) {
+        AlertDialog(
+            onDismissRequest = { showBackupFrequencyDialog = false },
+            title = { Text("Choose backup frequency") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    BackupFrequency.entries.forEach { frequency ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    viewModel.setBackupFrequency(frequency)
+                                    showBackupFrequencyDialog = false
+                                }
+                                .padding(vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(
+                                selected = frequency == backupFrequency,
+                                onClick = {
+                                    viewModel.setBackupFrequency(frequency)
+                                    showBackupFrequencyDialog = false
+                                }
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = frequency.label,
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showBackupFrequencyDialog = false }) {
+                    Text("Close")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -316,4 +596,45 @@ private fun ThemeMode.displayLabel(): String = when (this) {
     ThemeMode.SYSTEM -> "System default"
     ThemeMode.LIGHT -> "Always light"
     ThemeMode.DARK -> "Always dark"
+}
+
+private fun timestampedCsvName(prefix: String): String {
+    val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
+    return "${prefix}_${timestamp}.csv"
+}
+
+@Composable
+private fun FloatingSettingsHeader(title: String, showShadow: Boolean, modifier: Modifier = Modifier) {
+    Box(modifier = modifier.padding(horizontal = 16.dp)) {
+        if (showShadow) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .offset(y = 3.dp),
+                shape = RoundedCornerShape(32.dp),
+                color = Color.Transparent,
+                shadowElevation = 8.dp,
+                tonalElevation = 0.dp
+            ) {}
+        }
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+            shape = RoundedCornerShape(32.dp),
+            color = MaterialTheme.colorScheme.surface
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    textAlign = TextAlign.Center
+                )
+            }
+        }
+    }
 }

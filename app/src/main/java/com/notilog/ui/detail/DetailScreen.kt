@@ -4,22 +4,23 @@ import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
+import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.Info
-import androidx.compose.material.icons.rounded.Notifications
-import androidx.compose.material.icons.rounded.Share
-import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -30,10 +31,13 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import androidx.hilt.navigation.compose.hiltViewModel
+import com.notilog.R
 import com.notilog.data.local.NotificationEntity
 import com.notilog.ui.theme.StatusBadge
 import java.text.SimpleDateFormat
@@ -49,54 +53,28 @@ fun DetailScreen(
     onBack: () -> Unit = {},
     viewModel: DetailViewModel = hiltViewModel()
 ) {
-    val context = LocalContext.current
     val versions by viewModel.getVersions(packageName, systemId, tag).collectAsState(initial = emptyList())
     val appName = versions.firstOrNull()?.appName ?: "Unknown App"
     val isBlacklisted by viewModel.isBlacklisted(packageName).collectAsState(initial = false)
+    val detailListState = rememberLazyListState()
+    val showHeaderShadow by remember {
+        derivedStateOf {
+            detailListState.firstVisibleItemIndex > 0 || detailListState.firstVisibleItemScrollOffset > 0
+        }
+    }
     var showDeleteDialog by remember { mutableStateOf(false) }
 
-    Scaffold(
-        topBar = {},
-        containerColor = Color.Transparent
-    ) { innerPadding ->
-        Column(
+    Box(modifier = Modifier.fillMaxSize()) {
+        // Content area with rounded top corners (drawn first)
+        Surface(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
+                .padding(top = 52.dp),
+            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+            color = MaterialTheme.colorScheme.surface
         ) {
-            // Header - in normal flow with padding like search bar
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 16.dp, end = 16.dp, top = 16.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(imageVector = Icons.Rounded.ArrowBack, contentDescription = "Back")
-                }
-                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                    Text(appName, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge)
-                }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Switch(checked = isBlacklisted, onCheckedChange = { viewModel.toggleBlacklist(packageName) })
-                    Text(
-                        if (isBlacklisted) "Blocked" else "Block",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (isBlacklisted) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
-                    )
-                }
-            }
-
-            // Content area with rounded top corners
-            Surface(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-                color = MaterialTheme.colorScheme.surface
-            ) {
                 LazyColumn(
+                    state = detailListState,
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 120.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
@@ -131,20 +109,7 @@ fun DetailScreen(
                                     }
                                 }
                                 Box(modifier = Modifier.fillMaxWidth().height(1.dp).background(Brush.horizontalGradient(colors = listOf(Color.Transparent, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), Color.Transparent))))
-                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                                    Text("${versions.size} version(s) recorded", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
-                                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                        IconButton(onClick = {
-                                            val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
-                                            val clip = ClipData.newPlainText("Notification", versions.joinToString("\n---\n") { it.textContent ?: "" })
-                                            clipboard.setPrimaryClip(clip)
-                                        }) { Icon(Icons.Rounded.Info, contentDescription = "Copy all", modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary) }
-                                        IconButton(onClick = {
-                                            val intent = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, versions.joinToString("\n---\n") { it.textContent ?: "" }) }
-                                            context.startActivity(Intent.createChooser(intent, "Share all versions"))
-                                        }) { Icon(Icons.Rounded.Share, contentDescription = "Share all", modifier = Modifier.size(18.dp), tint = MaterialTheme.colorScheme.primary) }
-                                    }
-                                }
+                                Text("${versions.size} version(s) recorded", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold)
                             }
                         }
                     }
@@ -159,7 +124,7 @@ fun DetailScreen(
                             ) {
                                 Box(modifier = Modifier.fillMaxWidth().height(140.dp).padding(16.dp), contentAlignment = Alignment.Center) {
                                     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                        Icon(Icons.Rounded.Notifications, contentDescription = null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
+                                        Icon(Icons.Default.Notifications, contentDescription = null, modifier = Modifier.size(48.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f))
                                         Text("No history found", style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
                                 }
@@ -167,35 +132,82 @@ fun DetailScreen(
                         }
                     } else {
                         val latestVersion = versions.firstOrNull()
-                        items(versions) { version -> VersionCard(version, isLatest = version == latestVersion) }
+                        items(versions, key = { it.id }) { version ->
+                            VersionCard(
+                                version = version,
+                                isLatest = version == latestVersion,
+                                onDelete = { viewModel.deleteVersion(version.id) }
+                            )
+                        }
                     }
 
                     item {
-                        Surface(
-                            shape = RoundedCornerShape(16.dp),
-                            color = MaterialTheme.colorScheme.surface,
-                            shadowElevation = 2.dp
+                        Button(
+                            onClick = { showDeleteDialog = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                            shape = RoundedCornerShape(12.dp)
                         ) {
-                            Button(
-                                onClick = { showDeleteDialog = true },
-                                modifier = Modifier.fillMaxWidth().padding(12.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
-                                shape = RoundedCornerShape(12.dp)
-                            ) {
-                                Icon(Icons.Rounded.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(Modifier.width(8.dp))
-                                Text("Delete All Versions")
-                            }
+                            Icon(Icons.Default.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
+                            Spacer(Modifier.width(8.dp))
+                            Text("Delete All Versions")
                         }
                     }
                 }
+            }
+            // Header — on top of Surface
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(start = 16.dp, end = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onBack) {
+                    Icon(imageVector = Icons.Default.ArrowBack, contentDescription = "Back")
+                }
+                Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.Center) {
+                    Text(
+                        appName,
+                        fontWeight = FontWeight.Bold,
+                        style = MaterialTheme.typography.titleLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Switch(checked = isBlacklisted, onCheckedChange = { viewModel.toggleBlacklist(packageName) })
+                    Text(
+                        if (isBlacklisted) "Blocked" else "Block",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = if (isBlacklisted) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                    )
+                }
+            }
+            if (showHeaderShadow) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 48.dp, start = 16.dp, end = 16.dp)
+                        .height(10.dp)
+                        .background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.scrim.copy(alpha = 0.10f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
             }
         }
 
         if (showDeleteDialog) {
             AlertDialog(
                 onDismissRequest = { showDeleteDialog = false },
-                icon = { Icon(Icons.Rounded.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
+                icon = { Icon(Icons.Default.Warning, contentDescription = null, tint = MaterialTheme.colorScheme.error) },
                 title = { Text("Delete All Versions?") },
                 text = { Text("This will permanently delete all ${versions.size} recorded versions of notifications from this app. This action cannot be undone.") },
                 confirmButton = {
@@ -204,7 +216,6 @@ fun DetailScreen(
                 dismissButton = { TextButton(onClick = { showDeleteDialog = false }) { Text("Cancel") } }
             )
         }
-    }
 }
 
 @Composable
@@ -220,7 +231,11 @@ fun DetailAppIcon(packageName: String) {
 }
 
 @Composable
-private fun VersionCard(version: NotificationEntity, isLatest: Boolean) {
+private fun VersionCard(
+    version: NotificationEntity,
+    isLatest: Boolean,
+    onDelete: () -> Unit
+) {
     val context = LocalContext.current
     val borderColor = if (isLatest) Brush.linearGradient(colors = listOf(MaterialTheme.colorScheme.primary, MaterialTheme.colorScheme.primary.copy(alpha = 0.3f))) else Brush.linearGradient(colors = listOf(MaterialTheme.colorScheme.outline.copy(alpha = 0.3f), Color.Transparent))
 
@@ -232,8 +247,35 @@ private fun VersionCard(version: NotificationEntity, isLatest: Boolean) {
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                         Text(formatDateTime(version.postTime), style = MaterialTheme.typography.labelMedium, color = if (isLatest) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = if (isLatest) FontWeight.SemiBold else FontWeight.Medium)
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                            FilledTonalIconButton(onClick = { val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager; val clip = ClipData.newPlainText("Notification", version.textContent ?: ""); clipboard.setPrimaryClip(clip) }, modifier = Modifier.size(36.dp)) { Icon(Icons.Rounded.Info, contentDescription = "Copy", modifier = Modifier.size(18.dp)) }
-                            FilledTonalIconButton(onClick = { val intent = Intent(Intent.ACTION_SEND).apply { type = "text/plain"; putExtra(Intent.EXTRA_TEXT, version.textContent ?: "") }; context.startActivity(Intent.createChooser(intent, "Share notification")) }, modifier = Modifier.size(36.dp)) { Icon(Icons.Rounded.Share, contentDescription = "Share", modifier = Modifier.size(18.dp)) }
+                            FilledTonalIconButton(onClick = {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                val clip = ClipData.newPlainText("Notification", buildShareText(version))
+                                clipboard.setPrimaryClip(clip)
+                                Toast.makeText(context, "Copied", Toast.LENGTH_SHORT).show()
+                            }, modifier = Modifier.size(36.dp)) {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_content_copy_24),
+                                    contentDescription = "Copy",
+                                    modifier = Modifier.size(18.dp)
+                                )
+                            }
+                            FilledTonalIconButton(onClick = {
+                                val intent = Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, buildShareText(version))
+                                }
+                                context.startActivity(Intent.createChooser(intent, "Share notification"))
+                            }, modifier = Modifier.size(36.dp)) { Icon(Icons.Default.Share, contentDescription = "Share", modifier = Modifier.size(18.dp)) }
+                            FilledTonalIconButton(
+                                onClick = onDelete,
+                                modifier = Modifier.size(36.dp),
+                                colors = IconButtonDefaults.filledTonalIconButtonColors(
+                                    containerColor = MaterialTheme.colorScheme.errorContainer,
+                                    contentColor = MaterialTheme.colorScheme.error
+                                )
+                            ) {
+                                Icon(Icons.Default.Delete, contentDescription = "Delete record", modifier = Modifier.size(18.dp))
+                            }
                         }
                     }
                     if (!version.title.isNullOrBlank()) { Text(version.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface) }
@@ -248,4 +290,10 @@ private fun VersionCard(version: NotificationEntity, isLatest: Boolean) {
 private fun formatDateTime(timestamp: Long): String {
     val sdf = SimpleDateFormat("MMM dd, yyyy HH:mm:ss", Locale.getDefault())
     return sdf.format(Date(timestamp))
+}
+
+private fun buildShareText(version: NotificationEntity): String {
+    val title = version.title?.takeIf { it.isNotBlank() } ?: "(No title)"
+    val body = version.textContent?.takeIf { it.isNotBlank() } ?: "(No content)"
+    return "Time: ${formatDateTime(version.postTime)}\nTitle: $title\nContent: $body"
 }

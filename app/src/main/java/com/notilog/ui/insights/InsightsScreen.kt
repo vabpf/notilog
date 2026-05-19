@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -18,39 +19,35 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.notilog.ui.theme.Colors
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InsightsScreen(
-    onSettingsClick: () -> Unit = {},
     viewModel: InsightsViewModel = hiltViewModel()
 ) {
     val insightsState by viewModel.insightsState.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
+    val insightsListState = rememberLazyListState()
+    val showHeaderShadow by remember {
+        derivedStateOf {
+            insightsListState.firstVisibleItemIndex > 0 || insightsListState.firstVisibleItemScrollOffset > 0
+        }
+    }
 
     Scaffold(
         topBar = {},
         containerColor = Color.Transparent
-    ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding)
-        ) {
-            // Header - in normal flow
-            Text(
-                "Deep Insights",
-                style = MaterialTheme.typography.headlineMedium,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 16.dp)
-            )
-
+    ) {
+        Box(modifier = Modifier.fillMaxSize()) {
             Surface(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(top = 52.dp),
                 shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
                 color = MaterialTheme.colorScheme.surface
             ) {
@@ -60,6 +57,7 @@ fun InsightsScreen(
                     }
                 } else {
                     LazyColumn(
+                        state = insightsListState,
                         contentPadding = PaddingValues(top = 24.dp, start = 16.dp, end = 16.dp, bottom = 132.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
@@ -69,6 +67,49 @@ fun InsightsScreen(
                         item { DailyTrendCard(dailyData = insightsState.dailyInsights) }
                     }
                 }
+            }
+            FloatingHeader(
+                title = "Deep Insights",
+                showShadow = showHeaderShadow,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = 16.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun FloatingHeader(title: String, showShadow: Boolean, modifier: Modifier = Modifier) {
+    Box(modifier = modifier.padding(horizontal = 16.dp)) {
+        if (showShadow) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .offset(y = 3.dp),
+                shape = RoundedCornerShape(32.dp),
+                color = Color.Transparent,
+                shadowElevation = 8.dp,
+                tonalElevation = 0.dp
+            ) {}
+        }
+        Surface(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+            shape = RoundedCornerShape(32.dp),
+            color = MaterialTheme.colorScheme.surface
+        ) {
+            Box(contentAlignment = Alignment.Center) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    textAlign = TextAlign.Center
+                )
             }
         }
     }

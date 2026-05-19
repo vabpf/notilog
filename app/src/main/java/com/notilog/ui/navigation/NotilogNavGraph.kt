@@ -19,12 +19,14 @@ import com.notilog.ui.feed.FeedScreen
 import com.notilog.ui.feed.FeedViewModel
 import com.notilog.ui.settings.BlacklistScreen
 import com.notilog.ui.settings.SettingsScreen
+import com.notilog.ui.trash.TrashScreen
 
 sealed class Screen(val route: String) {
     object Feed : Screen("feed")
     object Insights : Screen("insights")
     object Settings : Screen("settings")
     object Blacklist : Screen("blacklist")
+    object Trash : Screen("trash")
     object Detail : Screen("detail/{packageName}/{systemId}/{tag}") {
         fun createRoute(packageName: String, systemId: Int, tag: String?) =
             "detail/${Uri.encode(packageName)}/$systemId/${Uri.encode(tag ?: "null")}"
@@ -59,20 +61,25 @@ fun NotilogNavGraph(
             )
         }
         composable(Screen.Insights.route) {
-            com.notilog.ui.insights.InsightsScreen(
-                onSettingsClick = { navController.navigate(Screen.Settings.route) }
-            )
+            com.notilog.ui.insights.InsightsScreen()
         }
         composable(Screen.Settings.route) {
             SettingsScreen(
                 onManageBlacklist = {
                     navController.navigate(Screen.Blacklist.route)
                 },
-                onBack = { navController.popBackStack() }
+                onManageTrash = {
+                    navController.navigate(Screen.Trash.route)
+                }
             )
         }
         composable(Screen.Blacklist.route) {
             BlacklistScreen(
+                onBack = { navController.popBackStack() }
+            )
+        }
+        composable(Screen.Trash.route) {
+            TrashScreen(
                 onBack = { navController.popBackStack() }
             )
         }

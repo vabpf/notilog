@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -104,6 +105,7 @@ fun FeedScreen(
     val allApps by viewModel.allApps.collectAsState()
 
     var isFilterExpanded by remember { mutableStateOf(false) }
+    var showAllAppsDialog by remember { mutableStateOf(false) }
 
     var headerBottomPx by remember { mutableStateOf(0) }
     val density = androidx.compose.ui.platform.LocalDensity.current
@@ -142,7 +144,7 @@ verticalArrangement = Arrangement.spacedBy(0.dp)
                                 item(key = "header_$dayLabel") {
                                     DaySeparator(label = dayLabel)
                                 }
-                                items(dayNotifications, key = { it.id }) { notification ->
+                                itemsIndexed(dayNotifications, key = { _, item -> item.id }) { index, notification ->
                                     NotificationItem(
                                         notification = notification,
                                         isSelected = notification.id in selectedIds,
@@ -161,13 +163,15 @@ verticalArrangement = Arrangement.spacedBy(0.dp)
                                             }
                                         }
                                     )
-                                    Box(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(horizontal = 16.dp)
-                                            .height(0.5.dp)
-                                            .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
-                                    )
+                                    if (index < dayNotifications.lastIndex) {
+                                        Box(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = 16.dp)
+                                                .height(0.5.dp)
+                                                .background(MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -211,7 +215,7 @@ verticalArrangement = Arrangement.Top
                     onReset = viewModel::resetFilters,
                     recentApps = recentApps,
                     allApps = allApps,
-                    onShowAllApps = { /* TODO: Show app selection dialog */ },
+                    onShowAllApps = { showAllAppsDialog = true },
                     modifier = Modifier
                         .fillMaxWidth()
                         .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 0.dp)
@@ -224,6 +228,60 @@ verticalArrangement = Arrangement.Top
                 modifier = Modifier.fillMaxWidth()
             )
         }
+    }
+
+    if (showAllAppsDialog) {
+        var selectedApps by remember(showAllAppsDialog) { mutableStateOf(filterState.selectedApps) }
+        AlertDialog(
+            onDismissRequest = { showAllAppsDialog = false },
+            title = { Text("Select apps") },
+            text = {
+                LazyColumn(
+                    modifier = Modifier.heightIn(max = 360.dp),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    items(allApps.sortedBy { it.appName.lowercase(Locale.getDefault()) }) { app ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable {
+                                    selectedApps = if (app.packageName in selectedApps) {
+                                        selectedApps - app.packageName
+                                    } else {
+                                        selectedApps + app.packageName
+                                    }
+                                }
+                                .padding(vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Checkbox(
+                                checked = app.packageName in selectedApps,
+                                onCheckedChange = { checked ->
+                                    selectedApps = if (checked) {
+                                        selectedApps + app.packageName
+                                    } else {
+                                        selectedApps - app.packageName
+                                    }
+                                }
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(app.appName, style = MaterialTheme.typography.bodyMedium)
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.setFilterState(filterState.copy(selectedApps = selectedApps))
+                        showAllAppsDialog = false
+                    }
+                ) { Text("Apply") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAllAppsDialog = false }) { Text("Cancel") }
+            }
+        )
     }
 }
 
@@ -379,13 +437,13 @@ fun FeedSearchSection(
                 },
                 trailingIcon = {
                     Box(
-                        modifier = Modifier.fillMaxWidth()
+                        modifier = Modifier.size(48.dp)
                     ) {
                         IconButton(
                             onClick = onFilterClick,
                             modifier = Modifier
                                 .size(48.dp)
-                                .align(Alignment.CenterEnd)
+                                .align(Alignment.Center)
                         ) {
                             Image(
                                 painter = painterResource(id = R.drawable.filter_list_24),
