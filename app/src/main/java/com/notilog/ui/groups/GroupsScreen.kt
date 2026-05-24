@@ -161,7 +161,7 @@ fun LargeChipsPanel(
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 8.dp),
         shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column {
             Text("Large chips", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(12.dp))
@@ -206,12 +206,12 @@ fun LargeChipItem(
 ) {
     Card(
         onClick = onClick,
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         modifier = Modifier
             .height(60.dp)
             .width(110.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
     ) {
         Row(
             verticalAlignment = Alignment.CenterVertically,
@@ -242,7 +242,7 @@ private fun CategoryCard(
     Card(
         onClick = onClick,
         shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 8.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
     ) {
         Column(
             modifier = Modifier
@@ -260,7 +260,7 @@ private fun CategoryCard(
                         .clip(RoundedCornerShape(12.dp))
                     .background(Brush.linearGradient(colors = gradient))
                     .shadow(
-                        elevation = 6.dp,
+                        elevation = 3.dp,
                         shape = RoundedCornerShape(12.dp),
                         ambientColor = gradient.firstOrNull()?.copy(alpha = 0.3f)
                             ?: MaterialTheme.colorScheme.primary.copy(alpha = 0.3f),
@@ -311,7 +311,7 @@ private fun CategoryCard(
 private fun AppCard(app: com.notilog.ui.groups.AppNotificationCount) {
     Card(
         shape = RoundedCornerShape(20.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 3.dp)
     ) {
         Row(
             modifier = Modifier

@@ -34,4 +34,23 @@ object Colors {
         Indigo, Magenta, Red, Cyan,
         Orange, Emerald, Slate
     )
+
+    fun getCategoryColor(category: String): Color {
+        return when (category.uppercase().trim()) {
+            "SOCIAL" -> Pink
+            "BANKING" -> Green
+            "SHOPPING" -> Amber
+            "SYSTEM" -> Slate
+            "ENTERTAINMENT" -> Purple
+            "UTILITIES" -> Teal
+            "COMMUNICATION" -> DeepViolet
+            "NEWS" -> Orange
+            "TRAVEL" -> Emerald
+            "HEALTH" -> Cyan
+            "PRODUCTIVITY" -> Indigo
+            "UNCATEGORIZED" -> Periwinkle
+            "ALL" -> MainBlue
+            else -> MainBlue
+        }
+    }
 }

@@ -9,9 +9,12 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Star
-import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material.icons.rounded.List
+import androidx.compose.material.icons.rounded.DateRange
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,15 +44,15 @@ fun InsightsScreen(
 
     Scaffold(
         topBar = {},
-        containerColor = Color.Transparent
+        containerColor = MaterialTheme.colorScheme.background
     ) {
-        Box(modifier = Modifier.fillMaxSize()) {
+        Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
             Surface(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(top = 52.dp),
+                    .padding(top = 42.dp),
                 shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-                color = MaterialTheme.colorScheme.surface
+                color = MaterialTheme.colorScheme.background
             ) {
                 if (isLoading) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -58,10 +61,11 @@ fun InsightsScreen(
                 } else {
                     LazyColumn(
                         state = insightsListState,
-                        contentPadding = PaddingValues(top = 24.dp, start = 16.dp, end = 16.dp, bottom = 132.dp),
+                        contentPadding = PaddingValues(top = 34.dp, start = 16.dp, end = 16.dp, bottom = 132.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp)
                     ) {
                         item { SummaryCardsRow(totalCount = insightsState.summary.totalCount, todayCount = insightsState.summary.todayCount, weekCount = insightsState.summary.weekCount) }
+                        item { FocusAnalysisCard(mostActiveHour = insightsState.mostActiveHour, disruptionScore = insightsState.disruptionScore) }
                         item { CategoryChartCard(categories = insightsState.categoryInsights) }
                         item { TopAppsCard(apps = insightsState.topApps) }
                         item { DailyTrendCard(dailyData = insightsState.dailyInsights) }
@@ -90,7 +94,7 @@ private fun FloatingHeader(title: String, showShadow: Boolean, modifier: Modifie
                     .offset(y = 3.dp),
                 shape = RoundedCornerShape(32.dp),
                 color = Color.Transparent,
-                shadowElevation = 8.dp,
+                shadowElevation = 4.dp,
                 tonalElevation = 0.dp
             ) {}
         }
@@ -99,7 +103,7 @@ private fun FloatingHeader(title: String, showShadow: Boolean, modifier: Modifie
                 .fillMaxWidth()
                 .height(52.dp),
             shape = RoundedCornerShape(32.dp),
-            color = MaterialTheme.colorScheme.surface
+            color = if (showShadow) MaterialTheme.colorScheme.surface else Color.Transparent
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Text(
@@ -110,6 +114,73 @@ private fun FloatingHeader(title: String, showShadow: Boolean, modifier: Modifie
                     ),
                     textAlign = TextAlign.Center
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun FocusAnalysisCard(mostActiveHour: Int?, disruptionScore: Int) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(24.dp)
+    ) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Text("Focus Analysis", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Peak Activity", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    val hourText = mostActiveHour?.let { 
+                        val period = if (it < 12) "AM" else "PM"
+                        val displayHour = when {
+                            it == 0 -> 12
+                            it > 12 -> it - 12
+                            else -> it
+                        }
+                        "$displayHour:00 $period"
+                    } ?: "No data"
+                    Text(hourText, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.primary)
+                }
+                
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Disruption Score", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text(
+                            text = "$disruptionScore",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            color = if (disruptionScore > 20) Colors.Error else Colors.Success,
+                            modifier = Modifier.alignByBaseline()
+                        )
+                        Text(
+                            text = "avg/hr at peak",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f),
+                            modifier = Modifier.alignByBaseline()
+                        )
+                    }
+                }
+            }
+            
+            if (disruptionScore > 25) {
+                Surface(
+                    color = Colors.Error.copy(alpha = 0.1f),
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Icon(Icons.Rounded.Warning, contentDescription = null, tint = Colors.Error, modifier = Modifier.size(18.dp))
+                        Text(
+                            "High notification intensity detected during peak hours. Consider blacklisting noisy apps.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = Colors.Error
+                        )
+                    }
+                }
             }
         }
     }
@@ -134,13 +205,13 @@ private fun SummaryCardsRow(
         SummaryCard(
             title = "Today",
             value = todayCount.toString(),
-            icon = Icons.Rounded.Settings,
+            icon = Icons.Rounded.List,
             modifier = Modifier.weight(1f)
         )
         SummaryCard(
             title = "This Week",
             value = weekCount.toString(),
-            icon = Icons.Rounded.Star,
+            icon = Icons.Rounded.DateRange,
             modifier = Modifier.weight(1f)
         )
     }
@@ -155,9 +226,9 @@ private fun SummaryCard(
 ) {
     Surface(
         modifier = modifier.height(100.dp),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 2.dp
+        shadowElevation = 1.dp
     ) {
         Column(
             modifier = Modifier.padding(16.dp),
@@ -192,9 +263,9 @@ private fun CategoryChartCard(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 2.dp
+        shadowElevation = 1.dp
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
@@ -211,13 +282,12 @@ private fun CategoryChartCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else {
-                val colors = Colors.chartColors
                 categories.take(6).forEachIndexed { index, category ->
                     CategoryBarItem(
                         category = formatCategory(category.category),
                         count = category.count,
                         percentage = category.percentage,
-                        color = colors[index % colors.size]
+                        color = Colors.getCategoryColor(category.category)
                     )
                     if (index < categories.size - 1) {
                         Spacer(modifier = Modifier.height(12.dp))
@@ -277,9 +347,9 @@ private fun TopAppsCard(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 2.dp
+        shadowElevation = 1.dp
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
@@ -297,11 +367,13 @@ private fun TopAppsCard(
                 )
             } else {
                 apps.forEachIndexed { index, app ->
-                    AppListItem(
-                        rank = index + 1,
-                        appName = app.appName,
-                        count = app.count
-                    )
+                    key(app.packageName) {
+                        AppListItem(
+                            rank = index + 1,
+                            appName = app.appName,
+                            count = app.count
+                        )
+                    }
                     if (index < apps.size - 1) {
                         Spacer(modifier = Modifier.height(12.dp))
                     }
@@ -368,9 +440,9 @@ private fun DailyTrendCard(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 2.dp
+        shadowElevation = 1.dp
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(

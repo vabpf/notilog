@@ -9,7 +9,11 @@ import androidx.room.Index
     indices = [
         Index(value = ["systemId"]),
         Index(value = ["postTime"]),
-        Index(value = ["isDeleted"])
+        Index(value = ["isDeleted"]),
+        Index(value = ["packageName"]),
+        Index(value = ["category"]),
+        Index(value = ["isDeleted", "postTime"]),
+        Index(value = ["isDeleted", "category", "postTime"])
     ]
 )
 data class NotificationEntity(

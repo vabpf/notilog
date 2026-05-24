@@ -4,23 +4,17 @@ import android.content.Context
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.notilog.data.local.BlacklistedAppDao
 import com.notilog.data.local.BlacklistedAppEntity
 import com.notilog.data.local.CategoryCountEntry
-import com.notilog.data.local.NotificationDao
 import com.notilog.data.local.NotificationEntity
 import com.notilog.data.local.AppInfoEntry
+import com.notilog.data.repository.BlacklistRepository
+import com.notilog.data.repository.NotificationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.flatMapLatest
-import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
@@ -53,8 +47,8 @@ private data class FilterParams(
 @HiltViewModel
 class FeedViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val notificationDao: NotificationDao,
-    private val blacklistedAppDao: BlacklistedAppDao,
+    private val notificationRepository: NotificationRepository,
+    private val blacklistRepository: BlacklistRepository,
     private val savedStateHandle: SavedStateHandle
 ) : ViewModel() {
 
@@ -62,6 +56,34 @@ class FeedViewModel @Inject constructor(
 
     private val _searchQuery = MutableStateFlow("")
     val searchQuery: StateFlow<String> = _searchQuery.asStateFlow()
+
+    private val _searchHistory = MutableStateFlow(loadSearchHistory())
+    val searchHistory: StateFlow<List<String>> = _searchHistory.asStateFlow()
+
+    private fun loadSearchHistory(): List<String> {
+        val historyString = prefs.getString("search_history", "") ?: ""
+        return if (historyString.isBlank()) emptyList() else historyString.split("|")
+    }
+
+    private fun saveSearchHistory(history: List<String>) {
+        prefs.edit().putString("search_history", history.joinToString("|")).apply()
+    }
+
+    fun addToSearchHistory(query: String) {
+        if (query.isBlank()) return
+        val current = _searchHistory.value.toMutableList()
+        current.remove(query)
+        current.add(0, query)
+        val newHistory = current.take(5)
+        _searchHistory.value = newHistory
+        saveSearchHistory(newHistory)
+    }
+
+    fun removeFromSearchHistory(query: String) {
+        val newHistory = _searchHistory.value.filter { it != query }
+        _searchHistory.value = newHistory
+        saveSearchHistory(newHistory)
+    }
 
     private val _filterState = MutableStateFlow(loadFilterState())
     val filterState: StateFlow<FilterState> = _filterState.asStateFlow()
@@ -84,7 +106,7 @@ class FeedViewModel @Inject constructor(
     private fun loadApps() {
         viewModelScope.launch {
             try {
-                notificationDao.getRecentApps(5).collect { apps ->
+                notificationRepository.getRecentApps(5).collect { apps ->
                     _recentApps.value = apps
                 }
             } catch (e: Exception) {
@@ -93,7 +115,7 @@ class FeedViewModel @Inject constructor(
         }
         viewModelScope.launch {
             try {
-                notificationDao.getAllApps().collect { apps ->
+                notificationRepository.getAllApps().collect { apps ->
                     _allApps.value = apps
                 }
             } catch (e: Exception) {
@@ -159,46 +181,48 @@ class FeedViewModel @Inject constructor(
         .map { it.isNotEmpty() }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
-    val blacklistedPackages: StateFlow<Set<String>> = blacklistedAppDao.getAll()
+    val blacklistedPackages: StateFlow<Set<String>> = blacklistRepository.getAll()
         .map { list -> list.map { it.packageName }.toSet() }
         .stateIn(viewModelScope, SharingStarted.Lazily, emptySet())
 
-    val categoryCounts: StateFlow<List<CategoryCountEntry>> = notificationDao.getCategoryNotificationCounts()
+    val categoryCounts: StateFlow<List<CategoryCountEntry>> = notificationRepository.getCategoryNotificationCounts()
         .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
-    @OptIn(ExperimentalCoroutinesApi::class)
+    @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
     val notifications: StateFlow<List<NotificationEntity>> = combine(
-        _searchQuery,
+        _searchQuery.debounce(300),
         _selectedCategory,
-        blacklistedPackages,
         _filterState
-    ) { query, category, blacklisted, filter ->
-        FilterParams(query, category, blacklisted, filter)
+    ) { query, category, filter ->
+        FilterParams(query, category, emptySet(), filter)
     }.flatMapLatest { params ->
         val baseFlow = if (params.category == "All") {
             if (params.query.isBlank()) {
-                notificationDao.getAllNotifications()
+                notificationRepository.getAllNotifications()
             } else {
-                notificationDao.searchAllNotifications(params.query)
+                notificationRepository.searchAllNotifications(params.query)
             }
         } else {
             if (params.query.isBlank()) {
-                notificationDao.getNotificationsByCategory(params.category)
+                notificationRepository.getNotificationsByCategory(params.category)
             } else {
-                notificationDao.searchAllNotifications(params.query)
+                notificationRepository.searchAllNotifications(params.query)
             }
         }
         val now = System.currentTimeMillis()
         val filter = params.filter
+        val queryTerms = if (params.query.isNotBlank()) {
+            params.query.trim().lowercase().normalize().split("\\s+".toRegex()).filter { it.isNotBlank() }
+        } else emptyList()
+
         baseFlow.map { list ->
             list.filter { notification ->
-                if (params.query.isBlank()) true
+                if (queryTerms.isEmpty()) true
                 else {
-                    val titleText = notification.title?.lowercase() ?: ""
-                    val contentText = notification.textContent?.lowercase() ?: ""
+                    val titleText = (notification.title ?: "").lowercase().normalize()
+                    val contentText = (notification.textContent ?: "").lowercase().normalize()
                     val searchText = "$titleText $contentText".trim()
-                    val terms = params.query.trim().lowercase().split("\\s+".toRegex()).filter { it.isNotBlank() }
-                    terms.all { term -> fuzzyMatch(term, searchText) }
+                    queryTerms.all { term -> fuzzyMatch(term, searchText) }
                 }
             }.filter { notification ->
                 val postTime = notification.postTime
@@ -223,7 +247,7 @@ class FeedViewModel @Inject constructor(
                     SortOption.OLDEST -> filteredList.sortedBy { it.postTime }
                     SortOption.APP_NAME -> filteredList.sortedBy { it.appName.lowercase() }
                 }
-            }.filter { it.packageName !in params.blacklisted }
+            }
         }
     }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
 
@@ -247,7 +271,7 @@ class FeedViewModel @Inject constructor(
 
     fun blacklistPackage(packageName: String) {
         viewModelScope.launch {
-            blacklistedAppDao.insert(BlacklistedAppEntity(packageName))
+            blacklistRepository.insert(BlacklistedAppEntity(packageName))
         }
     }
 
@@ -256,7 +280,7 @@ class FeedViewModel @Inject constructor(
             val selectedNotifications = notifications.value.filter { it.id in _selectedIds.value }
             val packages = selectedNotifications.map { it.packageName }.distinct()
             packages.forEach { pkg ->
-                blacklistedAppDao.insert(BlacklistedAppEntity(pkg))
+                blacklistRepository.insert(BlacklistedAppEntity(pkg))
             }
             clearSelection()
         }
@@ -264,26 +288,26 @@ class FeedViewModel @Inject constructor(
 
     fun deleteNotification(id: Long) {
         viewModelScope.launch {
-            notificationDao.softDeleteById(id, System.currentTimeMillis())
+            notificationRepository.softDeleteById(id, System.currentTimeMillis())
         }
     }
 
     fun deleteSelected() {
         viewModelScope.launch {
-            notificationDao.softDeleteByIds(_selectedIds.value.toList(), System.currentTimeMillis())
+            notificationRepository.softDeleteByIds(_selectedIds.value.toList(), System.currentTimeMillis())
             clearSelection()
         }
     }
 
     fun restoreFromTrash(id: Long) {
         viewModelScope.launch {
-            notificationDao.restoreFromTrash(id)
+            notificationRepository.restoreFromTrash(id)
         }
     }
 
     fun permanentDeleteNotification(id: Long) {
         viewModelScope.launch {
-            notificationDao.deleteById(id)
+            notificationRepository.deleteById(id)
         }
     }
 
@@ -296,7 +320,7 @@ class FeedViewModel @Inject constructor(
     }
 
     private fun fuzzySubstringMatch(term: String, word: String, threshold: Float = 0.6f): Boolean {
-        if (term.length > word.length) return fuzzySubstringMatch(word, term, threshold)
+        if (term.length > word.length) return false
         if (term.isEmpty()) return true
         var matchedChars = 0
         for (char in term) {
@@ -305,5 +329,10 @@ class FeedViewModel @Inject constructor(
             matchedChars = idx + 1
         }
         return term.length.toFloat() / word.length >= threshold
+    }
+
+    private fun String.normalize(): String {
+        val normalized = java.text.Normalizer.normalize(this, java.text.Normalizer.Form.NFD)
+        return normalized.replace("\\p{InCombiningDiacriticalMarks}+".toRegex(), "")
     }
 }

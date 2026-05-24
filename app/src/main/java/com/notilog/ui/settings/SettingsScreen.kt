@@ -1,6 +1,10 @@
 package com.notilog.ui.settings
 
+import android.content.ActivityNotFoundException
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.DocumentsContract
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -12,12 +16,18 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Info
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.List
 import androidx.compose.material.icons.rounded.Notifications
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.Warning
+import androidx.compose.material.icons.rounded.Build
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -63,21 +73,30 @@ fun SettingsScreen(
     var showClearAllDialog by remember { mutableStateOf(false) }
     var showBackupProviderDialog by remember { mutableStateOf(false) }
     var showBackupFrequencyDialog by remember { mutableStateOf(false) }
+    var showBackupAuthDialog by remember { mutableStateOf(false) }
+    var showBackupWebAuthDialog by remember { mutableStateOf(false) }
     var pendingEnableAutoBackup by remember { mutableStateOf(false) }
     var pendingSaveLabel by remember { mutableStateOf("Export data") }
+    var pendingBackupProvider by remember { mutableStateOf<BackupProvider?>(null) }
+    var pendingFolderProvider by remember { mutableStateOf<BackupProvider?>(null) }
+    var pendingWebAuthProvider by remember { mutableStateOf<BackupProvider?>(null) }
+    var selectedBackupProvider by remember { mutableStateOf(backupProvider) }
 
-    val saveCsvLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("text/csv")
+    LaunchedEffect(showBackupProviderDialog) {
+        if (showBackupProviderDialog) {
+            selectedBackupProvider = backupProvider
+        }
+    }
+
+    val saveJsonLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("application/gzip")
     ) { uri ->
         if (uri == null) return@rememberLauncherForActivityResult
         coroutineScope.launch {
             try {
-                val csv = viewModel.buildExportCsv()
                 val outputStream = context.contentResolver.openOutputStream(uri)
                     ?: throw IOException("Unable to open destination stream")
-                outputStream.bufferedWriter().use { writer ->
-                    writer.write(csv)
-                }
+                viewModel.exportDataStreaming(outputStream)
                 Toast.makeText(context, "$pendingSaveLabel completed", Toast.LENGTH_SHORT).show()
             } catch (error: IOException) {
                 Toast.makeText(context, "$pendingSaveLabel failed", Toast.LENGTH_SHORT).show()
@@ -95,8 +114,7 @@ fun SettingsScreen(
             try {
                 val inputStream = context.contentResolver.openInputStream(uri)
                     ?: throw IOException("Unable to open source stream")
-                val content = inputStream.bufferedReader().use { reader -> reader.readText() }
-                val importedCount = viewModel.importData(content)
+                val importedCount = viewModel.importData(inputStream)
                 Toast.makeText(context, "Imported $importedCount notifications", Toast.LENGTH_SHORT).show()
             } catch (error: IOException) {
                 Toast.makeText(context, "Import failed", Toast.LENGTH_SHORT).show()
@@ -111,7 +129,14 @@ fun SettingsScreen(
     val backupFolderLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.StartActivityForResult()
     ) { result ->
-        val uri = result.data?.data ?: return@rememberLauncherForActivityResult
+        val uri = result.data?.data ?: run {
+            if (pendingEnableAutoBackup) {
+                pendingEnableAutoBackup = false
+                Toast.makeText(context, "Backup folder is required to enable auto backup", Toast.LENGTH_SHORT).show()
+            }
+            pendingFolderProvider = null
+            return@rememberLauncherForActivityResult
+        }
         val flags = result.data?.flags ?: 0
         val persistableFlags = flags and (Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
         try {
@@ -120,6 +145,9 @@ fun SettingsScreen(
             Toast.makeText(context, "Could not keep folder permission", Toast.LENGTH_SHORT).show()
             return@rememberLauncherForActivityResult
         }
+        val provider = pendingFolderProvider ?: backupProvider
+        pendingFolderProvider = null
+        viewModel.setBackupProvider(provider)
         viewModel.setBackupFolderUri(uri)
         Toast.makeText(context, "Backup folder selected", Toast.LENGTH_SHORT).show()
         if (pendingEnableAutoBackup) {
@@ -128,24 +156,89 @@ fun SettingsScreen(
             if (!enabled) {
                 Toast.makeText(context, "Backup folder is required to enable auto backup", Toast.LENGTH_SHORT).show()
             } else {
-                showBackupProviderDialog = true
                 showBackupFrequencyDialog = true
             }
         }
     }
 
-    Scaffold(topBar = {}, containerColor = Color.Transparent) {
+    fun backupProviderInitialUri(provider: BackupProvider): Uri? {
+        return when (provider) {
+            BackupProvider.GOOGLE_DRIVE -> DocumentsContract.buildRootUri("com.google.android.apps.docs.storage", "root")
+            BackupProvider.ONEDRIVE -> DocumentsContract.buildRootUri("com.microsoft.skydrive.content", "root")
+            BackupProvider.LOCAL -> null
+        }
+    }
+
+    fun backupProviderPackage(provider: BackupProvider): String? {
+        return when (provider) {
+            BackupProvider.GOOGLE_DRIVE -> "com.google.android.apps.docs"
+            BackupProvider.ONEDRIVE -> "com.microsoft.skydrive"
+            BackupProvider.LOCAL -> null
+        }
+    }
+
+    fun backupProviderWebAuthUrl(provider: BackupProvider): String? {
+        return when (provider) {
+            BackupProvider.GOOGLE_DRIVE -> "https://drive.google.com/"
+            BackupProvider.ONEDRIVE -> "https://onedrive.live.com/"
+            BackupProvider.LOCAL -> null
+        }
+    }
+
+    fun isProviderAppAvailable(packageName: String): Boolean {
+        return try {
+            context.packageManager.getPackageInfo(packageName, 0)
+            true
+        } catch (_: PackageManager.NameNotFoundException) {
+            false
+        }
+    }
+
+    fun launchBackupFolderPicker(provider: BackupProvider) {
+        pendingFolderProvider = provider
+        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+            addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+        }
+        val providerPackage = backupProviderPackage(provider)
+        if (providerPackage != null) {
+            if (!isProviderAppAvailable(providerPackage)) {
+                pendingFolderProvider = null
+                pendingWebAuthProvider = provider
+                showBackupWebAuthDialog = true
+                return
+            }
+            intent.setPackage(providerPackage)
+        }
+        backupProviderInitialUri(provider)?.let { initialUri ->
+            intent.putExtra(DocumentsContract.EXTRA_INITIAL_URI, initialUri)
+        }
+        backupFolderLauncher.launch(intent)
+    }
+
+    fun proceedWithBackupProvider(provider: BackupProvider) {
+        viewModel.setBackupProvider(provider)
+        if (provider.requiresAuth && !viewModel.isBackupProviderAuthenticated(provider)) {
+            pendingBackupProvider = provider
+            showBackupAuthDialog = true
+        } else {
+            pendingBackupProvider = null
+            launchBackupFolderPicker(provider)
+        }
+    }
+
+    Scaffold(topBar = {}, containerColor = MaterialTheme.colorScheme.background) {
         Box(modifier = Modifier.fillMaxSize()) {
             Surface(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(top = 52.dp),
+                    .padding(top = 42.dp),
                 shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-                color = MaterialTheme.colorScheme.surface
+                color = MaterialTheme.colorScheme.background
             ) {
                 LazyColumn(
                     state = settingsListState,
-                    contentPadding = PaddingValues(top = 24.dp, start = 16.dp, end = 16.dp, bottom = 132.dp),
+                    contentPadding = PaddingValues(top = 34.dp, start = 16.dp, end = 16.dp, bottom = 132.dp),
                     verticalArrangement = Arrangement.spacedBy(20.dp)
                 ) {
                     item {
@@ -183,7 +276,7 @@ fun SettingsScreen(
                             if (autoCleanup) {
                                 SettingsDivider()
                                 SettingsRow(
-                                    icon = Icons.Rounded.Refresh,
+                                    icon = Icons.Rounded.Info,
                                     title = "Delete after",
                                     subtitle = "$retentionDays days",
                                     showChevron = true,
@@ -204,23 +297,23 @@ fun SettingsScreen(
                     item {
                         SettingsSection(title = "Data Management") {
                             SettingsRow(
-                                icon = Icons.Rounded.Refresh,
+                                icon = Icons.Rounded.Share,
                                 title = "Export Data",
-                                subtitle = "Save notifications as CSV",
+                                subtitle = "Save as compressed JSON (.json.gz)",
                                 showChevron = true,
                                 onClick = {
                                     pendingSaveLabel = "Export data"
-                                    saveCsvLauncher.launch(timestampedCsvName("notilog_export"))
+                                    saveJsonLauncher.launch(timestampedCompressedJsonName("notilog_export"))
                                 }
                             )
                             SettingsDivider()
                             SettingsRow(
-                                icon = Icons.Rounded.List,
+                                icon = Icons.Rounded.Build,
                                 title = "Import Data",
-                                subtitle = "Restore notifications from CSV or JSON",
+                                subtitle = "Restore from .json.gz or legacy formats",
                                 showChevron = true,
                                 onClick = {
-                                    importDataLauncher.launch(arrayOf("text/*", "application/json"))
+                                    importDataLauncher.launch(arrayOf("application/json", "application/gzip", "application/x-gzip", "text/*"))
                                 }
                             )
                             SettingsDivider()
@@ -237,18 +330,8 @@ fun SettingsScreen(
                                         checked = backupEnabled,
                                         onCheckedChange = { enabled ->
                                             if (enabled) {
-                                                if (backupFolderUri == null) {
-                                                    pendingEnableAutoBackup = true
-                                                    val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
-                                                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-                                                        addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
-                                                    }
-                                                    backupFolderLauncher.launch(intent)
-                                                } else {
-                                                    viewModel.setBackupEnabled(true)
-                                                    showBackupProviderDialog = true
-                                                    showBackupFrequencyDialog = true
-                                                }
+                                                pendingEnableAutoBackup = true
+                                                showBackupProviderDialog = true
                                             } else {
                                                 pendingEnableAutoBackup = false
                                                 viewModel.setBackupEnabled(false)
@@ -261,10 +344,13 @@ fun SettingsScreen(
                                 SettingsDivider()
                                 SettingsRow(
                                     icon = Icons.Rounded.List,
-                                    title = "Backup Provider",
+                                    title = "Backup Type",
                                     subtitle = backupProvider.label,
                                     showChevron = true,
-                                    onClick = { showBackupProviderDialog = true }
+                                    onClick = {
+                                        pendingEnableAutoBackup = true
+                                        showBackupProviderDialog = true
+                                    }
                                 )
                                 SettingsDivider()
                                 SettingsRow(
@@ -281,27 +367,28 @@ fun SettingsScreen(
                                     subtitle = if (backupFolderUri == null) "Not selected" else "Selected",
                                     showChevron = true,
                                     onClick = {
-                                        val intent = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
-                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
-                                            addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION)
+                                        if (backupProvider.requiresAuth && !viewModel.isBackupProviderAuthenticated(backupProvider)) {
+                                            pendingBackupProvider = backupProvider
+                                            showBackupAuthDialog = true
+                                        } else {
+                                            launchBackupFolderPicker(backupProvider)
                                         }
-                                        backupFolderLauncher.launch(intent)
                                     }
                                 )
                                 SettingsDivider()
                                 SettingsRow(
-                                    icon = Icons.Rounded.Settings,
+                                    icon = Icons.Rounded.PlayArrow,
                                     title = "Backup Now",
                                     subtitle = "Create backup file for ${backupProvider.label}",
                                     showChevron = true,
                                     onClick = {
-                                        val prefix = if (backupProvider == BackupProvider.GOOGLE_DRIVE) {
-                                            "notilog_backup_google"
-                                        } else {
-                                            "notilog_backup_onedrive"
+                                        val prefix = when (backupProvider) {
+                                            BackupProvider.GOOGLE_DRIVE -> "notilog_backup_google"
+                                            BackupProvider.ONEDRIVE -> "notilog_backup_onedrive"
+                                            BackupProvider.LOCAL -> "notilog_backup_local"
                                         }
                                         pendingSaveLabel = "${backupProvider.label} backup"
-                                        saveCsvLauncher.launch(timestampedCsvName(prefix))
+                                        saveJsonLauncher.launch(timestampedCompressedJsonName(prefix))
                                     }
                                 )
                             }
@@ -328,7 +415,7 @@ fun SettingsScreen(
                     item {
                         SettingsSection(title = "Exclusion List") {
                             SettingsRow(
-                                icon = Icons.Rounded.List,
+                                icon = Icons.Rounded.Lock,
                                 title = "Manage Blocked Apps",
                                 subtitle = "Apps whose notifications will not be logged",
                                 showChevron = true,
@@ -461,8 +548,12 @@ fun SettingsScreen(
 
     if (showBackupProviderDialog) {
         AlertDialog(
-            onDismissRequest = { showBackupProviderDialog = false },
-            title = { Text("Choose backup location") },
+            onDismissRequest = {
+                showBackupProviderDialog = false
+                pendingEnableAutoBackup = false
+                pendingBackupProvider = null
+            },
+            title = { Text("Choose backup type") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     BackupProvider.entries.forEach { provider ->
@@ -470,17 +561,15 @@ fun SettingsScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clickable {
-                                    viewModel.setBackupProvider(provider)
-                                    showBackupProviderDialog = false
+                                    selectedBackupProvider = provider
                                 }
                                 .padding(vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             RadioButton(
-                                selected = provider == backupProvider,
+                                selected = provider == selectedBackupProvider,
                                 onClick = {
-                                    viewModel.setBackupProvider(provider)
-                                    showBackupProviderDialog = false
+                                    selectedBackupProvider = provider
                                 }
                             )
                             Spacer(Modifier.width(8.dp))
@@ -493,8 +582,107 @@ fun SettingsScreen(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showBackupProviderDialog = false }) {
-                    Text("Close")
+                TextButton(onClick = {
+                    showBackupProviderDialog = false
+                    proceedWithBackupProvider(selectedBackupProvider)
+                }) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    showBackupProviderDialog = false
+                    pendingEnableAutoBackup = false
+                    pendingBackupProvider = null
+                }) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showBackupAuthDialog) {
+        val authProvider = pendingBackupProvider ?: backupProvider
+        AlertDialog(
+            onDismissRequest = {
+                showBackupAuthDialog = false
+                pendingEnableAutoBackup = false
+                pendingBackupProvider = null
+            },
+            title = { Text("Authenticate ${authProvider.label}") },
+            text = {
+                Text("Sign in to ${authProvider.label} to continue and select a backup folder.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showBackupAuthDialog = false
+                        pendingBackupProvider = null
+                        launchBackupFolderPicker(authProvider)
+                    }
+                ) {
+                    Text("Authenticate")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showBackupAuthDialog = false
+                        pendingEnableAutoBackup = false
+                        pendingBackupProvider = null
+                    }
+                ) {
+                    Text("Cancel")
+                }
+            }
+        )
+    }
+
+    if (showBackupWebAuthDialog) {
+        val webProvider = pendingWebAuthProvider ?: backupProvider
+        AlertDialog(
+            onDismissRequest = {
+                showBackupWebAuthDialog = false
+                pendingEnableAutoBackup = false
+                pendingWebAuthProvider = null
+            },
+            title = { Text("${webProvider.label} not installed") },
+            text = {
+                Text("Open ${webProvider.label} in your browser to authenticate. Install the app to choose a backup folder.")
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val url = backupProviderWebAuthUrl(webProvider)
+                        if (url == null) {
+                            Toast.makeText(context, "No web sign-in available", Toast.LENGTH_SHORT).show()
+                        } else {
+                            val webIntent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+                                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                            }
+                            try {
+                                context.startActivity(webIntent)
+                            } catch (_: ActivityNotFoundException) {
+                                Toast.makeText(context, "No browser available", Toast.LENGTH_SHORT).show()
+                            }
+                        }
+                        showBackupWebAuthDialog = false
+                        pendingEnableAutoBackup = false
+                        pendingWebAuthProvider = null
+                    }
+                ) {
+                    Text("Open Web")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        showBackupWebAuthDialog = false
+                        pendingEnableAutoBackup = false
+                        pendingWebAuthProvider = null
+                    }
+                ) {
+                    Text("Cancel")
                 }
             }
         )
@@ -546,7 +734,7 @@ fun SettingsScreen(
 fun SettingsSection(title: String, content: @Composable ColumnScope.() -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(text = title, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = 4.dp))
-        Surface(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 2.dp, tonalElevation = 0.dp) {
+        Surface(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface, shadowElevation = 1.dp, tonalElevation = 0.dp) {
             Column { content() }
         }
     }
@@ -598,9 +786,9 @@ private fun ThemeMode.displayLabel(): String = when (this) {
     ThemeMode.DARK -> "Always dark"
 }
 
-private fun timestampedCsvName(prefix: String): String {
+private fun timestampedCompressedJsonName(prefix: String): String {
     val timestamp = SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())
-    return "${prefix}_${timestamp}.csv"
+    return "${prefix}_${timestamp}.json.gz"
 }
 
 @Composable
@@ -614,7 +802,7 @@ private fun FloatingSettingsHeader(title: String, showShadow: Boolean, modifier:
                     .offset(y = 3.dp),
                 shape = RoundedCornerShape(32.dp),
                 color = Color.Transparent,
-                shadowElevation = 8.dp,
+                shadowElevation = 4.dp,
                 tonalElevation = 0.dp
             ) {}
         }
@@ -623,7 +811,7 @@ private fun FloatingSettingsHeader(title: String, showShadow: Boolean, modifier:
                 .fillMaxWidth()
                 .height(52.dp),
             shape = RoundedCornerShape(32.dp),
-            color = MaterialTheme.colorScheme.surface
+            color = if (showShadow) MaterialTheme.colorScheme.surface else Color.Transparent
         ) {
             Box(contentAlignment = Alignment.Center) {
                 Text(

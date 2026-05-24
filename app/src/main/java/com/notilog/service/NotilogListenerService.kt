@@ -3,9 +3,10 @@ package com.notilog.service
 import android.app.Notification
 import android.service.notification.NotificationListenerService
 import android.service.notification.StatusBarNotification
-import com.notilog.data.local.NotificationDao
+import android.util.LruCache
 import com.notilog.data.local.NotificationEntity
 import com.notilog.data.repository.CategoryRepository
+import com.notilog.data.repository.NotificationRepository
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -17,13 +18,16 @@ import javax.inject.Inject
 class NotilogListenerService : NotificationListenerService() {
 
     @Inject
-    lateinit var notificationDao: NotificationDao
+    lateinit var notificationRepository: NotificationRepository
 
     @Inject
     lateinit var categoryRepository: CategoryRepository
 
     private val job = SupervisorJob()
     private val scope = CoroutineScope(Dispatchers.IO + job)
+    
+    // In-memory deduplication cache of the last 20 notifications
+    private val deduplicationCache = LruCache<String, Boolean>(20)
 
     override fun onNotificationPosted(sbn: StatusBarNotification) {
         val notification = sbn.notification
@@ -37,6 +41,13 @@ class NotilogListenerService : NotificationListenerService() {
         }
 
         val packageName = sbn.packageName
+        
+        // Fast in-memory deduplication check
+        val cacheKey = "$packageName:${sbn.id}:${sbn.tag ?: ""}:$title:$text"
+        if (deduplicationCache.get(cacheKey) == true) {
+            return
+        }
+
         val appName = try {
             val pm = applicationContext.packageManager
             val info = pm.getApplicationInfo(packageName, 0)
@@ -46,10 +57,16 @@ class NotilogListenerService : NotificationListenerService() {
         }
 
         scope.launch {
-            // Deduplication logic
-            val latest = notificationDao.getLatestBySystemId(packageName, sbn.id, sbn.tag)
+            // Check cache inside coroutine again to handle race conditions
+            if (deduplicationCache.get(cacheKey) == true) {
+                return@launch
+            }
+
+            // Deduplication logic with DB fallback
+            val latest = notificationRepository.getLatestBySystemId(packageName, sbn.id, sbn.tag)
             if (latest != null && latest.title == title && latest.textContent == text) {
-                // Ignore exact duplicates
+                // Populate cache for subsequent checks
+                deduplicationCache.put(cacheKey, true)
                 return@launch
             }
 
@@ -65,13 +82,14 @@ class NotilogListenerService : NotificationListenerService() {
                 postTime = sbn.postTime,
                 category = category
             )
-            notificationDao.insert(entity)
+            notificationRepository.insert(entity)
+            deduplicationCache.put(cacheKey, true)
         }
     }
 
     override fun onNotificationRemoved(sbn: StatusBarNotification) {
         scope.launch {
-            notificationDao.markAsDismissed(sbn.packageName, sbn.id, sbn.tag)
+            notificationRepository.markAsDismissed(sbn.packageName, sbn.id, sbn.tag)
         }
     }
 

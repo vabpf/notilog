@@ -1,35 +1,32 @@
 package com.notilog.ui.trash
 
-import androidx.compose.foundation.Image
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowBack
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.asImageBitmap
-import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.core.graphics.drawable.toBitmap
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.notilog.data.local.NotificationEntity
+import com.notilog.ui.feed.AppIcon
+import com.notilog.ui.theme.StatusBadge
+import com.notilog.ui.theme.Colors
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -41,69 +38,165 @@ fun TrashScreen(
     viewModel: TrashViewModel = hiltViewModel()
 ) {
     val deletedNotifications by viewModel.deletedNotifications.collectAsState()
-    val listState = rememberLazyListState()
-    val showHeaderShadow by remember {
-        derivedStateOf {
-            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0
-        }
-    }
+    var searchQuery by remember { mutableStateOf("") }
     var showEmptyAllDialog by remember { mutableStateOf(false) }
     var showDeleteForeverDialog by remember { mutableStateOf<Long?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        Surface(
+    val filteredNotifications = remember(deletedNotifications, searchQuery) {
+        val query = searchQuery.trim()
+        if (query.isBlank()) deletedNotifications
+        else deletedNotifications.filter { n ->
+            n.appName.contains(query, ignoreCase = true) ||
+                n.title?.contains(query, ignoreCase = true) == true ||
+                n.textContent?.contains(query, ignoreCase = true) == true
+        }
+    }
+
+    Scaffold(
+        topBar = {
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.background,
+                contentColor = MaterialTheme.colorScheme.onBackground
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 4.dp, end = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onBack) {
+                        Icon(
+                            Icons.Rounded.ArrowBack,
+                            contentDescription = "Back",
+                            tint = MaterialTheme.colorScheme.onBackground
+                        )
+                    }
+                    Box(modifier = Modifier.weight(1f)) {
+                        Text(
+                            "Trash",
+                            modifier = Modifier.align(Alignment.CenterStart),
+                            fontWeight = FontWeight.Bold,
+                            style = MaterialTheme.typography.titleLarge,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    if (deletedNotifications.isNotEmpty()) {
+                        TextButton(
+                            onClick = { showEmptyAllDialog = true },
+                            colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Text("Empty all", fontWeight = FontWeight.SemiBold)
+                        }
+                    }
+                }
+            }
+        },
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        containerColor = MaterialTheme.colorScheme.background
+    ) { padding ->
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = 52.dp),
-            shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-            color = MaterialTheme.colorScheme.surface
+                .padding(top = padding.calculateTopPadding())
         ) {
-            if (deletedNotifications.isEmpty()) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Icon(
-                            Icons.Rounded.Notifications,
-                            contentDescription = null,
-                            modifier = Modifier.size(48.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.3f)
-                        )
+            if (deletedNotifications.isNotEmpty()) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    placeholder = { Text("Search trash...") },
+                    leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+                    trailingIcon = {
+                        if (searchQuery.isNotBlank()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(Icons.Rounded.Close, contentDescription = "Clear search")
+                            }
+                        }
+                    },
+                    singleLine = true,
+                    shape = RoundedCornerShape(20.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedContainerColor = MaterialTheme.colorScheme.surface,
+                        unfocusedContainerColor = MaterialTheme.colorScheme.surface
+                    )
+                )
+                Text(
+                    text = "${deletedNotifications.size} notifications",
+                    modifier = Modifier.padding(start = 20.dp, bottom = 8.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            when {
+                deletedNotifications.isEmpty() -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 24.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Card(shape = RoundedCornerShape(20.dp)) {
+                            Column(
+                                modifier = Modifier.padding(28.dp),
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                StatusBadge(
+                                    text = "All clear",
+                                    color = Colors.Success
+                                )
+                                Text(
+                                    "Trash is empty",
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    color = MaterialTheme.colorScheme.onSurface
+                                )
+                                Text(
+                                    "Deleted notifications will appear here.",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                }
+                filteredNotifications.isEmpty() -> {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
                         Text(
-                            "Trash is empty",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                            "No notifications found",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 }
-            } else {
-                LazyColumn(
-                    state = listState,
-                    contentPadding = PaddingValues(top = 8.dp, start = 16.dp, end = 16.dp, bottom = 132.dp),
-                    verticalArrangement = Arrangement.spacedBy(0.dp)
-                ) {
-                    items(deletedNotifications, key = { it.id }) { notification ->
-                        TrashItem(
-                            notification = notification,
-                            onRestore = { viewModel.restoreFromTrash(notification.id) },
-                            onDeleteForever = { showDeleteForeverDialog = notification.id }
-                        )
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 120.dp),
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        items(filteredNotifications, key = { it.id }) { notification ->
+                            TrashItem(
+                                notification = notification,
+                                onRestore = { viewModel.restoreFromTrash(notification.id) },
+                                onDeleteForever = { showDeleteForeverDialog = notification.id }
+                            )
+                        }
                     }
                 }
             }
         }
-
-        FloatingTrashHeader(
-            title = "Trash",
-            showShadow = showHeaderShadow,
-            showEmptyAll = deletedNotifications.isNotEmpty(),
-            onBack = onBack,
-            onEmptyAll = { showEmptyAllDialog = true },
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .padding(top = 16.dp)
-        )
     }
 
     if (showEmptyAllDialog) {
@@ -153,11 +246,10 @@ private fun TrashItem(
     onRestore: () -> Unit,
     onDeleteForever: () -> Unit
 ) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surface,
-        tonalElevation = 1.dp
+    Card(
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
         Row(
             modifier = Modifier
@@ -223,7 +315,8 @@ private fun TrashItem(
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 FilledTonalIconButton(
                     onClick = onRestore,
-                    modifier = Modifier.size(36.dp)
+                    modifier = Modifier.size(36.dp),
+                    colors = IconButtonDefaults.filledTonalIconButtonColors(containerColor = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.6f), contentColor = MaterialTheme.colorScheme.onSecondaryContainer)
                 ) {
                     Icon(Icons.Rounded.Refresh, contentDescription = "Restore", modifier = Modifier.size(18.dp))
                 }
@@ -236,108 +329,6 @@ private fun TrashItem(
                     )
                 ) {
                     Icon(Icons.Rounded.Delete, contentDescription = "Delete forever", modifier = Modifier.size(18.dp))
-                }
-            }
-        }
-    }
-
-    Spacer(Modifier.height(8.dp))
-}
-
-@Composable
-private fun AppIcon(packageName: String, size: Int = 40) {
-    val context = LocalContext.current
-    var icon by remember { mutableStateOf<android.graphics.drawable.Drawable?>(null) }
-    var loaded by remember { mutableStateOf(false) }
-
-    LaunchedEffect(packageName) {
-        if (packageName.isNotEmpty()) {
-            try {
-                icon = context.packageManager.getApplicationIcon(packageName)
-            } catch (_: Exception) {
-                icon = null
-            }
-            loaded = true
-        }
-    }
-
-    Box(
-        modifier = Modifier
-            .size(size.dp)
-            .clip(CircleShape)
-            .background(MaterialTheme.colorScheme.surfaceVariant),
-        contentAlignment = Alignment.Center
-    ) {
-        icon?.let { drawable ->
-            Image(
-                bitmap = drawable.toBitmap().asImageBitmap(),
-                contentDescription = null,
-                modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Fit
-            )
-        } ?: run {
-            Icon(
-                Icons.Rounded.Notifications,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size((size * 0.5f).dp)
-            )
-        }
-    }
-}
-
-@Composable
-private fun FloatingTrashHeader(
-    title: String,
-    showShadow: Boolean,
-    showEmptyAll: Boolean,
-    onBack: () -> Unit,
-    onEmptyAll: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Box(modifier = modifier.padding(horizontal = 16.dp)) {
-        if (showShadow) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(52.dp)
-                    .offset(y = 3.dp),
-                shape = RoundedCornerShape(32.dp),
-                color = Color.Transparent,
-                shadowElevation = 8.dp,
-                tonalElevation = 0.dp
-            ) {}
-        }
-        Surface(
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(32.dp),
-            color = MaterialTheme.colorScheme.surface
-        ) {
-            Row(
-                modifier = Modifier.fillMaxSize().padding(horizontal = 4.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.Rounded.ArrowBack, contentDescription = "Back")
-                }
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.SemiBold
-                    ),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.weight(1f)
-                )
-                if (showEmptyAll) {
-                    TextButton(
-                        onClick = onEmptyAll,
-                        colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error)
-                    ) {
-                        Text("Empty all", fontWeight = FontWeight.SemiBold)
-                    }
-                } else {
-                    Spacer(Modifier.width(68.dp))
                 }
             }
         }

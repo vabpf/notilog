@@ -1,11 +1,10 @@
 package com.notilog.ui.groups
 
 import androidx.lifecycle.ViewModel
-import com.notilog.data.local.NotificationDao
+import com.notilog.data.repository.NotificationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 data class AppNotificationCount(val packageName: String, val appName: String, val count: Int)
@@ -18,10 +17,10 @@ private data class GroupedStats(
 
 @HiltViewModel
 class GroupsViewModel @Inject constructor(
-    private val notificationDao: NotificationDao
+    private val notificationRepository: NotificationRepository
 ) : ViewModel() {
 
-    private val groupedStats: Flow<GroupedStats> = notificationDao.getAllNotifications().map { list ->
+    private val groupedStats: Flow<GroupedStats> = notificationRepository.getAllNotifications().map { list ->
         val categories = list.groupBy { it.category }
             .map { (cat, items) -> CategoryCount(cat, items.size) }
             .sortedByDescending { it.count }

@@ -37,9 +37,9 @@ private val LightColorScheme = lightColorScheme(
     onError = Color(0xFFFFFFFF),
     errorContainer = Color(0xFFFFDAD6),
     onErrorContainer = Color(0xFF93000A),
-    background = Color(0xFFFFFFFF),
+    background = Color(0xFFEBF0F4),
     onBackground = Color(0xFF191C22),
-    surface = Color(0xFFFFFFFF),
+    surface = Color(0xFFFDFDFD),
     onSurface = Color(0xFF191C22),
     surfaceVariant = Color(0xFFE1E2EB),
     onSurfaceVariant = Color(0xFF424752),
@@ -68,7 +68,7 @@ private val DarkColorScheme = darkColorScheme(
     onError = Color(0xFF690005),
     errorContainer = Color(0xFF93000A),
     onErrorContainer = Color(0xFFFFDAD6),
-    background = Color(0xFF0F1114),
+    background = Color(0xFF010101),
     onBackground = Color(0xFFF9F9FF),
     surface = Color(0xFF0F1114),
     onSurface = Color(0xFFF9F9FF),
@@ -107,7 +107,7 @@ fun NotilogTheme(
     // Shapes: large radii for a premium rounded feel
     val ErgoShapes = Shapes(
         small = RoundedCornerShape(8.dp),
-        medium = RoundedCornerShape(16.dp),
+        medium = RoundedCornerShape(20.dp),
         large = RoundedCornerShape(32.dp)
     )
 

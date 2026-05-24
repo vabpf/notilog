@@ -1,5 +1,6 @@
 package com.notilog.ui.feed
 
+import android.app.DatePickerDialog
 import android.graphics.drawable.Drawable
 import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
@@ -17,6 +18,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -27,6 +30,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
@@ -40,6 +44,9 @@ import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Warning
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material.icons.rounded.List
+import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material3.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material3.Card
@@ -71,6 +78,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.Dp
 import androidx.core.graphics.drawable.toBitmap
+import kotlinx.coroutines.launch
 import com.notilog.R
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.notilog.data.local.NotificationEntity
@@ -78,6 +86,7 @@ import com.notilog.data.local.AppInfoEntry
 import com.notilog.ui.theme.StatusBadge
 import com.notilog.ui.theme.Colors
 import com.notilog.ui.theme.TimeChip
+import androidx.compose.ui.focus.onFocusChanged
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -106,20 +115,35 @@ fun FeedScreen(
 
     var isFilterExpanded by remember { mutableStateOf(false) }
     var showAllAppsDialog by remember { mutableStateOf(false) }
+    var showCustomDateDialog by remember { mutableStateOf(false) }
 
     var headerBottomPx by remember { mutableStateOf(0) }
     val density = androidx.compose.ui.platform.LocalDensity.current
     val headerBottomDp = with(density) { headerBottomPx.toDp() }
+    val listState = rememberLazyListState()
+    val showScrollToTop by remember {
+        derivedStateOf {
+            listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0
+        }
+    }
+    val coroutineScope = rememberCoroutineScope()
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    val quickFilterBarVisible = remember(categoryCounts) {
+        categoryCounts.any { it.count > 0 && it.category != "UNCATEGORIZED" }
+    }
+
+    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         // Feed surface — rounded corners, same horizontal inset as search bar
         if (headerBottomPx > 0) {
             Surface(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(top = headerBottomDp - 12.dp, start = 16.dp, end = 16.dp),
+                    .padding(top = headerBottomDp + 20.dp + (if (quickFilterBarVisible) 0.dp else 12.dp)),
+
+
                 shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
-                color = MaterialTheme.colorScheme.surface
+                color = MaterialTheme.colorScheme.surface,
+                shadowElevation = 1.dp
             ) {
                 Column {
                     if (isSelectionMode) {
@@ -132,7 +156,7 @@ fun FeedScreen(
                     }
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        state = androidx.compose.foundation.lazy.rememberLazyListState(),
+                        state = listState,
                         contentPadding = PaddingValues(top = 8.dp, bottom = 132.dp),
 verticalArrangement = Arrangement.spacedBy(0.dp)
                     ) {
@@ -187,15 +211,20 @@ verticalArrangement = Arrangement.spacedBy(0.dp)
                 // .statusBarsPadding()
                 .padding(top = 16.dp)
                 .onGloballyPositioned { coords ->
-                    headerBottomPx = (coords.positionInRoot().y + coords.size.height).toInt()
+                    headerBottomPx = coords.size.height - with(density) { 4.dp.roundToPx() }
                 },
 verticalArrangement = Arrangement.Top
         ) {
+            val searchHistory by viewModel.searchHistory.collectAsState(initial = emptyList())
             FeedSearchSection(
                 query = searchQuery,
                 onQueryChange = viewModel::setSearchQuery,
                 onFilterClick = { isFilterExpanded = !isFilterExpanded },
                 hasActiveFilters = hasActiveFilters,
+                searchHistory = searchHistory,
+                onHistoryItemClick = { viewModel.setSearchQuery(it) },
+                onHistoryItemDelete = { viewModel.removeFromSearchHistory(it) },
+                onSearchCommit = { viewModel.addToSearchHistory(it) },
                 modifier = Modifier.fillMaxWidth()
             )
 
@@ -209,17 +238,18 @@ verticalArrangement = Arrangement.Top
                     animationSpec = tween(200, easing = FastOutSlowInEasing)
                 ) + fadeOut(animationSpec = tween(200))
             ) {
-                FilterOptionsSection(
-                    filterState = filterState,
-                    onFilterChange = viewModel::setFilterState,
-                    onReset = viewModel::resetFilters,
-                    recentApps = recentApps,
-                    allApps = allApps,
-                    onShowAllApps = { showAllAppsDialog = true },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 0.dp)
-                )
+                    FilterOptionsSection(
+                        filterState = filterState,
+                        onFilterChange = viewModel::setFilterState,
+                        onReset = viewModel::resetFilters,
+                        recentApps = recentApps,
+                        allApps = allApps,
+                        onShowAllApps = { showAllAppsDialog = true },
+                        onCustomDateClick = { showCustomDateDialog = true },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 16.dp, top = 16.dp, end = 16.dp, bottom = 0.dp)
+                    )
             }
             QuickFilterBar(
                 categoryCounts = categoryCounts,
@@ -228,44 +258,94 @@ verticalArrangement = Arrangement.Top
                 modifier = Modifier.fillMaxWidth()
             )
         }
+
+        AnimatedVisibility(
+            visible = showScrollToTop,
+            enter = fadeIn(animationSpec = tween(200)) + expandVertically(animationSpec = tween(200), expandFrom = Alignment.Top),
+            exit = fadeOut(animationSpec = tween(200)) + shrinkVertically(animationSpec = tween(200), shrinkTowards = Alignment.Top),
+            modifier = Modifier.align(Alignment.TopCenter).padding(top = headerBottomDp + 30.dp)
+        ) {
+            FilledIconButton(
+                onClick = { coroutineScope.launch { listState.animateScrollToItem(0) } },
+                modifier = Modifier.size(36.dp),
+                colors = IconButtonDefaults.filledIconButtonColors(
+                    containerColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.35f),
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                )
+            ) {
+                Icon(
+                    Icons.Rounded.KeyboardArrowUp,
+                    contentDescription = "Scroll to top",
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+        }
     }
 
     if (showAllAppsDialog) {
         var selectedApps by remember(showAllAppsDialog) { mutableStateOf(filterState.selectedApps) }
+        var appSearchQuery by remember(showAllAppsDialog) { mutableStateOf("") }
+        val filteredApps = remember(allApps, appSearchQuery) {
+            if (appSearchQuery.isBlank()) {
+                allApps
+            } else {
+                allApps.filter { app ->
+                    app.appName.contains(appSearchQuery, ignoreCase = true) ||
+                        app.packageName.contains(appSearchQuery, ignoreCase = true)
+                }
+            }
+        }
         AlertDialog(
             onDismissRequest = { showAllAppsDialog = false },
             title = { Text("Select apps") },
             text = {
-                LazyColumn(
-                    modifier = Modifier.heightIn(max = 360.dp),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = 420.dp)
                 ) {
-                    items(allApps.sortedBy { it.appName.lowercase(Locale.getDefault()) }) { app ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    selectedApps = if (app.packageName in selectedApps) {
-                                        selectedApps - app.packageName
-                                    } else {
-                                        selectedApps + app.packageName
+                    OutlinedTextField(
+                        value = appSearchQuery,
+                        onValueChange = { appSearchQuery = it },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 12.dp),
+                        placeholder = { Text("Search apps...") },
+                        leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+                        singleLine = true,
+                        shape = RoundedCornerShape(20.dp)
+                    )
+                    LazyColumn(
+                        modifier = Modifier.heightIn(max = 360.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        items(filteredApps.sortedBy { it.appName.lowercase(Locale.getDefault()) }, key = { it.packageName }) { app ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable {
+                                        selectedApps = if (app.packageName in selectedApps) {
+                                            selectedApps - app.packageName
+                                        } else {
+                                            selectedApps + app.packageName
+                                        }
                                     }
-                                }
-                                .padding(vertical = 6.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Checkbox(
-                                checked = app.packageName in selectedApps,
-                                onCheckedChange = { checked ->
-                                    selectedApps = if (checked) {
-                                        selectedApps + app.packageName
-                                    } else {
-                                        selectedApps - app.packageName
+                                    .padding(vertical = 6.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Checkbox(
+                                    checked = app.packageName in selectedApps,
+                                    onCheckedChange = { checked ->
+                                        selectedApps = if (checked) {
+                                            selectedApps + app.packageName
+                                        } else {
+                                            selectedApps - app.packageName
+                                        }
                                     }
-                                }
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(app.appName, style = MaterialTheme.typography.bodyMedium)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text(app.appName, style = MaterialTheme.typography.bodyMedium)
+                            }
                         }
                     }
                 }
@@ -280,6 +360,24 @@ verticalArrangement = Arrangement.Top
             },
             dismissButton = {
                 TextButton(onClick = { showAllAppsDialog = false }) { Text("Cancel") }
+            }
+        )
+    }
+
+    if (showCustomDateDialog) {
+        CustomDateRangeDialog(
+            initialStartDate = filterState.customStartDate,
+            initialEndDate = filterState.customEndDate,
+            onDismiss = { showCustomDateDialog = false },
+            onApply = { startDate, endDate ->
+                viewModel.setFilterState(
+                    filterState.copy(
+                        dateRange = DateRangeOption.CUSTOM,
+                        customStartDate = startDate,
+                        customEndDate = endDate
+                    )
+                )
+                showCustomDateDialog = false
             }
         )
     }
@@ -346,7 +444,7 @@ fun AppHeader(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface
+        color = MaterialTheme.colorScheme.background
     ) {
         TopAppBar(
             title = {
@@ -365,7 +463,7 @@ fun AppHeader(
                     Icon(
                         Icons.Rounded.Notifications,
                         contentDescription = "Feed",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
             },
@@ -374,7 +472,7 @@ fun AppHeader(
                     Icon(
                         Icons.Rounded.Settings,
                         contentDescription = "Settings",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = MaterialTheme.colorScheme.onSurface
                     )
                 }
             },
@@ -393,93 +491,195 @@ fun FeedSearchSection(
     onQueryChange: (String) -> Unit,
     onFilterClick: () -> Unit,
     hasActiveFilters: Boolean,
+    searchHistory: List<String> = emptyList(),
+    onHistoryItemClick: (String) -> Unit = {},
+    onHistoryItemDelete: (String) -> Unit = {},
+    onSearchCommit: (String) -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     val isDark = LocalIsDarkTheme.current
     val barColor = if (isDark) MaterialTheme.colorScheme.surfaceVariant else Color.White
-    Box(
-        modifier = modifier.padding(horizontal = 16.dp)
-    ) {
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp)
-                .offset(y = 3.dp),
-            shape = RoundedCornerShape(32.dp),
-            color = Color.Transparent,
-            shadowElevation = 8.dp,
-            tonalElevation = 0.dp
-        ) {}
-        Surface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
-            shape = RoundedCornerShape(32.dp),
-            color = barColor
-        ) {
-            OutlinedTextField(
-                value = query,
-                onValueChange = onQueryChange,
-                modifier = Modifier.fillMaxSize(),
-                placeholder = {
-                    Text(
-                        "Search notifications...",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = if (isDark) Color.White.copy(alpha = 0.5f) else Color.Black.copy(alpha = 0.5f)
-                    )
-                },
-                leadingIcon = {
-                    Icon(
-                        Icons.Rounded.Search,
-                        contentDescription = null,
-                        tint = if (isDark) Color.White.copy(alpha = 0.4f) else Color.Black.copy(alpha = 0.4f)
-                    )
-                },
-                trailingIcon = {
-                    Box(
-                        modifier = Modifier.size(48.dp)
-                    ) {
-                        IconButton(
-                            onClick = onFilterClick,
-                            modifier = Modifier
-                                .size(48.dp)
-                                .align(Alignment.Center)
+    var isFocused by remember { mutableStateOf(false) }
+    
+    Column(modifier = modifier) {
+        Box(modifier = Modifier.padding(horizontal = 16.dp)) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp)
+                    .offset(y = 3.dp),
+                shape = RoundedCornerShape(32.dp),
+                color = Color.Transparent,
+                shadowElevation = 4.dp,
+                tonalElevation = 0.dp
+            ) {}
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(52.dp),
+                shape = RoundedCornerShape(32.dp),
+                color = barColor
+            ) {
+                OutlinedTextField(
+                    value = query,
+                    onValueChange = onQueryChange,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .onFocusChanged { isFocused = it.isFocused },
+                    placeholder = {
+                        Text(
+                            "Search notifications...",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+                        )
+                    },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Rounded.Search,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                        )
+                    },
+                    trailingIcon = {
+                        Box(
+                            modifier = Modifier.size(48.dp)
                         ) {
-                            Image(
-                                painter = painterResource(id = R.drawable.filter_list_24),
-                                contentDescription = "Filter",
-                                modifier = Modifier.size(24.dp),
-                                colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(
-                                    if (isDark) Color.White.copy(alpha = 0.6f) else Color.Black.copy(alpha = 0.6f)
-                                )
-                            )
-                        }
-                        if (hasActiveFilters) {
-                            Box(
+                            IconButton(
+                                onClick = onFilterClick,
                                 modifier = Modifier
-                                    .align(Alignment.TopEnd)
-                                    .offset(x = (-12).dp, y = 12.dp)
-                                    .size(8.dp)
-                                    .background(MaterialTheme.colorScheme.error, CircleShape)
-                            )
+                                    .size(48.dp)
+                                    .align(Alignment.Center)
+                            ) {
+                                Image(
+                                    painter = painterResource(id = R.drawable.filter_list_24),
+                                    contentDescription = "Filter",
+                                    modifier = Modifier.size(24.dp),
+                                    colorFilter = androidx.compose.ui.graphics.ColorFilter.tint(
+                                        MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                    )
+                                )
+                            }
+                            if (hasActiveFilters) {
+                                Box(
+                                    modifier = Modifier
+                                        .align(Alignment.TopEnd)
+                                        .offset(x = (-12).dp, y = 12.dp)
+                                        .size(8.dp)
+                                        .background(MaterialTheme.colorScheme.error, CircleShape)
+                                )
+                            }
+                        }
+                    },
+                    shape = RoundedCornerShape(32.dp),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Color.Transparent,
+                        unfocusedBorderColor = Color.Transparent,
+                        focusedContainerColor = Color.Transparent,
+                        unfocusedContainerColor = Color.Transparent,
+                        focusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        unfocusedTextColor = MaterialTheme.colorScheme.onSurface,
+                        cursorColor = MaterialTheme.colorScheme.primary
+                    ),
+                    singleLine = true,
+                    keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                        imeAction = androidx.compose.ui.text.input.ImeAction.Search
+                    ),
+                    keyboardActions = androidx.compose.foundation.text.KeyboardActions(
+                        onSearch = { onSearchCommit(query) }
+                    )
+                )
+            }
+        }
+             if (searchHistory.isNotEmpty() && query.isBlank() && isFocused) {
+            Spacer(Modifier.height(8.dp))
+            Box(modifier = Modifier.fillMaxWidth().height(40.dp)) {
+                LazyRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().fillMaxHeight().zIndex(0f)
+                ) {
+                    items(searchHistory) { historyItem ->
+                        Surface(
+                            onClick = { onHistoryItemClick(historyItem) },
+                            shape = RoundedCornerShape(20.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            shadowElevation = 0.dp
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(start = 12.dp, end = 4.dp, top = 2.dp, bottom = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Icon(
+                                    Icons.Rounded.Refresh,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                                )
+                                Text(
+                                    historyItem,
+                                    style = MaterialTheme.typography.bodySmall,
+                                    fontWeight = FontWeight.Medium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .size(32.dp)
+                                        .clip(CircleShape)
+                                        .clickable { onHistoryItemDelete(historyItem) },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        Icons.Rounded.Close,
+                                        contentDescription = "Delete",
+                                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                        modifier = Modifier.size(14.dp)
+                                    )
+                                }
+                            }
                         }
                     }
-                },
-                shape = RoundedCornerShape(32.dp),
-                colors = OutlinedTextFieldDefaults.colors(
-                    focusedBorderColor = Color.Transparent,
-                    unfocusedBorderColor = Color.Transparent,
-                    focusedContainerColor = Color.Transparent,
-                    unfocusedContainerColor = Color.Transparent,
-                    focusedTextColor = if (isDark) Color.White else Color.Black,
-                    unfocusedTextColor = if (isDark) Color.White else Color.Black,
-                    cursorColor = MaterialTheme.colorScheme.primary
-                ),
-                singleLine = true
-            )
+                }
+                
+                // Left-side faded gradient overlay matching background color
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .zIndex(10f)
+                        .width(16.dp)
+                        .fillMaxHeight()
+                        .background(
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(
+                                    MaterialTheme.colorScheme.background,
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                )
+                
+                // Right-side faded gradient overlay matching background color
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .zIndex(10f)
+                        .width(16.dp)
+                        .fillMaxHeight()
+                        .background(
+                            brush = Brush.horizontalGradient(
+                                colors = listOf(
+                                    Color.Transparent,
+                                    MaterialTheme.colorScheme.background
+                                )
+                            )
+                        )
+                )
+            }
         }
     }
 }
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -491,7 +691,7 @@ fun SelectionTopBar(
 ) {
     Surface(
         modifier = Modifier.fillMaxWidth(),
-        color = MaterialTheme.colorScheme.surface
+        color = MaterialTheme.colorScheme.background
     ) {
         TopAppBar(
             title = {
@@ -523,7 +723,7 @@ fun SelectionTopBar(
             },
             actions = {
                 IconButton(onClick = onBlacklistSelected) {
-                    Icon(Icons.Rounded.Warning, contentDescription = "Blacklist selected")
+                    Icon(Icons.Rounded.Lock, contentDescription = "Block selected")
                 }
                 IconButton(onClick = onDeleteSelected) {
                     Icon(Icons.Rounded.Delete, contentDescription = "Delete selected")
@@ -585,34 +785,74 @@ fun QuickFilterBar(
 
     if (activeCategories.isEmpty()) return
 
-    LazyRow(
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-        modifier = modifier.fillMaxWidth()
-    ) {
-        item {
-            val isSelected = selectedCategory == "All"
-            ShadowChip(
-                label = "All",
-                count = totalCount,
-                isSelected = isSelected,
-                categoryColor = Colors.MainBlue,
-                onClick = { onCategorySelected("All") }
-            )
+    Box(modifier = modifier) {
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp),
+            modifier = Modifier.fillMaxWidth().zIndex(0f)
+        ) {
+            item {
+                val isSelected = selectedCategory == "All"
+                ShadowChip(
+                    label = "All",
+                    count = totalCount,
+                    isSelected = isSelected,
+                    categoryColor = Colors.MainBlue,
+                    onClick = { onCategorySelected("All") }
+                )
+            }
+            items(activeCategories) { entry ->
+                val isSelected = selectedCategory == entry.category
+                val categoryColor = Colors.getCategoryColor(entry.category)
+                ShadowChip(
+                    label = formatCategory(entry.category),
+                    count = entry.count,
+                    isSelected = isSelected,
+                    categoryColor = categoryColor,
+                    onClick = { onCategorySelected(if (isSelected) "All" else entry.category) }
+                )
+            }
         }
-        items(activeCategories) { entry ->
-            val isSelected = selectedCategory == entry.category
-            val categoryColor = Colors.chartColors[activeCategories.indexOf(entry) % Colors.chartColors.size]
-            ShadowChip(
-                label = formatCategory(entry.category),
-                count = entry.count,
-                isSelected = isSelected,
-                categoryColor = categoryColor,
-                onClick = { onCategorySelected(if (isSelected) "All" else entry.category) }
-            )
-        }
+        
+        // Left-side faded gradient overlay matching background color
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterStart)
+                .zIndex(10f)
+                .width(16.dp)
+                .matchParentSize()
+                .background(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.background,
+                            Color.Transparent
+                        )
+                    )
+                )
+        )
+        
+        // Right-side faded gradient overlay matching background color
+        Box(
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .zIndex(10f)
+                .width(16.dp)
+                .matchParentSize()
+                .background(
+                    brush = Brush.horizontalGradient(
+                        colors = listOf(
+                            Color.Transparent,
+                            MaterialTheme.colorScheme.background
+                        )
+                    )
+                )
+        )
     }
+
 }
+
+
+
 
 @Composable
 private fun ShadowChip(
@@ -633,7 +873,7 @@ private fun ShadowChip(
         onClick = onClick,
         shape = RoundedCornerShape(20.dp),
         color = bgColor,
-        shadowElevation = 4.dp,
+        shadowElevation = 2.dp,
         border = androidx.compose.foundation.BorderStroke(1.5.dp, borderColor)
     ) {
         Row(
@@ -837,15 +1077,19 @@ private fun FilterOptionsSection(
     modifier: Modifier = Modifier
 ) {
     Surface(
-        modifier = modifier,
-        shape = RoundedCornerShape(16.dp),
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(28.dp),
         color = MaterialTheme.colorScheme.surface,
-        shadowElevation = 2.dp
-    ) {
+        shadowElevation = 1.dp
+        ) {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            val dateFormatter = remember { SimpleDateFormat("MMM d, yyyy", Locale.getDefault()) }
+            val customStart = filterState.customStartDate
+            val customEnd = filterState.customEndDate
+
             // Date Range
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -869,6 +1113,22 @@ private fun FilterOptionsSection(
             LazyRow(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                if (filterState.dateRange == DateRangeOption.CUSTOM && customStart != null && customEnd != null) {
+                    val customLabel =
+                        "${dateFormatter.format(Date(customStart))} - ${dateFormatter.format(Date(customEnd))}"
+                    item {
+                        FilterChip(
+                            selected = true,
+                            onClick = onCustomDateClick,
+                            label = { Text(customLabel, style = MaterialTheme.typography.bodySmall) },
+                            shape = RoundedCornerShape(50),
+                        colors = FilterChipDefaults.filterChipColors(
+                            selectedContainerColor = Colors.MainBlue,
+                            selectedLabelColor = MaterialTheme.colorScheme.onPrimary
+                        )
+                        )
+                    }
+                }
                 val dateOptions = listOf(
                     DateRangeOption.ALL to "All",
                     DateRangeOption.TODAY to "Today",
@@ -909,7 +1169,7 @@ private fun FilterOptionsSection(
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                if (allApps.size > 5) {
+                if (allApps.isNotEmpty()) {
                     Text(
                         "See more",
                         style = MaterialTheme.typography.bodySmall.copy(
@@ -990,18 +1250,118 @@ private fun FilterOptionsSection(
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                TextButton(
-                    onClick = onReset,
-                    modifier = Modifier.height(32.dp)
+                val resetInteraction = remember { MutableInteractionSource() }
+                val isResetPressed by resetInteraction.collectIsPressedAsState()
+                val resetBgColor by animateColorAsState(
+                    targetValue = if (isResetPressed) Colors.MainBlue.copy(alpha = 0.12f)
+                    else Color(0xFFF0F0F0),
+                    label = "resetFiltersBg"
+                )
+                Surface(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(resetBgColor)
+                        .clickable(
+                            interactionSource = resetInteraction,
+                            indication = null,
+                            onClick = onReset
+                        )
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                    color = Color.Transparent
                 ) {
                     Text(
                         "Reset filters",
+                        style = MaterialTheme.typography.labelMedium,
                         color = Colors.MainBlue
                     )
                 }
             }
         }
     }
+}
+
+@Composable
+private fun CustomDateRangeDialog(
+    initialStartDate: Long?,
+    initialEndDate: Long?,
+    onDismiss: () -> Unit,
+    onApply: (Long, Long) -> Unit
+) {
+    val context = LocalContext.current
+    var startDate by remember { mutableStateOf(initialStartDate) }
+    var endDate by remember { mutableStateOf(initialEndDate) }
+
+    val dateFormatter = remember { SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()) }
+    val startLabel = startDate?.let { dateFormatter.format(Date(it)) } ?: "Select start date"
+    val endLabel = endDate?.let { dateFormatter.format(Date(it)) } ?: "Select end date"
+    val canApply = startDate != null && endDate != null && (startDate ?: 0L) <= (endDate ?: 0L)
+
+    fun openDatePicker(initial: Long?, onPicked: (Long) -> Unit) {
+        val cal = Calendar.getInstance().apply {
+            if (initial != null) {
+                timeInMillis = initial
+            }
+        }
+        DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                val picked = Calendar.getInstance().apply {
+                    set(Calendar.YEAR, year)
+                    set(Calendar.MONTH, month)
+                    set(Calendar.DAY_OF_MONTH, dayOfMonth)
+                    set(Calendar.HOUR_OF_DAY, 0)
+                    set(Calendar.MINUTE, 0)
+                    set(Calendar.SECOND, 0)
+                    set(Calendar.MILLISECOND, 0)
+                }.timeInMillis
+                onPicked(picked)
+            },
+            cal.get(Calendar.YEAR),
+            cal.get(Calendar.MONTH),
+            cal.get(Calendar.DAY_OF_MONTH)
+        ).show()
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Select date range") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                OutlinedButton(
+                    onClick = { openDatePicker(startDate) { startDate = it } },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(startLabel)
+                }
+                OutlinedButton(
+                    onClick = { openDatePicker(endDate) { endDate = it } },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(endLabel)
+                }
+                if (!canApply && startDate != null && endDate != null) {
+                    Text(
+                        "End date must be after start date",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = { onApply(startDate ?: 0L, endDate ?: 0L) },
+                enabled = canApply
+            ) {
+                Text("Apply")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 private fun formatTime(timestamp: Long): String {

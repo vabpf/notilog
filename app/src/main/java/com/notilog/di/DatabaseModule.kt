@@ -3,7 +3,10 @@ package com.notilog.di
 import android.content.Context
 import androidx.room.Room
 import com.notilog.data.local.BlacklistedAppDao
+import com.notilog.data.local.CategoryOverrideDao
 import com.notilog.data.local.MIGRATION_1_2
+import com.notilog.data.local.MIGRATION_2_3
+import com.notilog.data.local.MIGRATION_3_4
 import com.notilog.data.local.NotificationDao
 import com.notilog.data.local.NotilogDatabase
 import dagger.Module
@@ -25,7 +28,7 @@ object DatabaseModule {
             NotilogDatabase::class.java,
             "notilog.db"
         )
-            .addMigrations(MIGRATION_1_2)
+            .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .build()
     }
 
@@ -34,4 +37,7 @@ object DatabaseModule {
 
     @Provides
     fun provideBlacklistedAppDao(db: NotilogDatabase): BlacklistedAppDao = db.blacklistedAppDao()
+
+    @Provides
+    fun provideCategoryOverrideDao(db: NotilogDatabase): CategoryOverrideDao = db.categoryOverrideDao()
 }

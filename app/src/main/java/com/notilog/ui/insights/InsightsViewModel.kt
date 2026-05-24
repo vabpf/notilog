@@ -5,7 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.notilog.data.local.AppCountEntry
 import com.notilog.data.local.CategoryCountEntry
 import com.notilog.data.local.DailyCountEntry
-import com.notilog.data.local.NotificationDao
+import com.notilog.data.repository.NotificationRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -38,16 +38,24 @@ data class DailyInsight(
     val count: Int
 )
 
+data class HourlyInsight(
+    val hour: Int,
+    val count: Int
+)
+
 data class InsightsState(
     val summary: InsightsSummary = InsightsSummary(),
     val categoryInsights: List<CategoryInsight> = emptyList(),
     val topApps: List<AppInsight> = emptyList(),
-    val dailyInsights: List<DailyInsight> = emptyList()
+    val dailyInsights: List<DailyInsight> = emptyList(),
+    val hourlyInsights: List<HourlyInsight> = emptyList(),
+    val mostActiveHour: Int? = null,
+    val disruptionScore: Int = 0
 )
 
 @HiltViewModel
 class InsightsViewModel @Inject constructor(
-    private val notificationDao: NotificationDao
+    private val notificationRepository: NotificationRepository
 ) : ViewModel() {
 
     private val _isLoading = MutableStateFlow(true)
@@ -80,20 +88,21 @@ class InsightsViewModel @Inject constructor(
 
                 // Combine first 3 flows
                 val countsFlow = combine(
-                    notificationDao.getTotalNotificationCount(),
-                    notificationDao.getNotificationCountSince(startOfToday),
-                    notificationDao.getNotificationCountSince(startOfWeek)
+                    notificationRepository.getTotalNotificationCount(),
+                    notificationRepository.getNotificationCountSince(startOfToday),
+                    notificationRepository.getNotificationCountSince(startOfWeek)
                 ) { total, today, week ->
                     Triple(total, today, week)
                 }
 
                 // Combine next 3 flows
                 val dataFlow = combine(
-                    notificationDao.getCategoryBreakdown(),
-                    notificationDao.getTopApps(5),
-                    notificationDao.getDailyCounts(sevenDaysAgo)
-                ) { categories, topApps, daily ->
-                    Pair(Pair(categories, topApps), daily)
+                    notificationRepository.getCategoryBreakdown(),
+                    notificationRepository.getTopApps(5),
+                    notificationRepository.getDailyCounts(sevenDaysAgo),
+                    notificationRepository.getHourlyDistribution()
+                ) { categories, topApps, daily, hourly ->
+                    Triple(Pair(categories, topApps), daily, hourly)
                 }
 
                 // Final combine
@@ -101,8 +110,18 @@ class InsightsViewModel @Inject constructor(
                     val (total, today, week) = counts
                     val (categories, topApps) = data.first
                     val daily = data.second
+                    val hourly = data.third
                     
                     val maxCount = categories.maxOfOrNull { it.count } ?: 1
+                    
+                    val hourlyList = hourly.map { HourlyInsight(it.hour.toInt(), it.count) }
+                    val mostActive = hourlyList.maxByOrNull { it.count }?.hour
+                    
+                    // Disruption score: Avg notifications per hour during peak hours (top 3 hours)
+                    val peakAvg = if (hourlyList.isNotEmpty()) {
+                        hourlyList.sortedByDescending { it.count }.take(3).map { it.count }.average().toInt()
+                    } else 0
+
                     InsightsState(
                         summary = InsightsSummary(
                             totalCount = total,
@@ -128,7 +147,10 @@ class InsightsViewModel @Inject constructor(
                                 date = dailyCount.date,
                                 count = dailyCount.count
                             )
-                        }
+                        },
+                        hourlyInsights = hourlyList,
+                        mostActiveHour = mostActive,
+                        disruptionScore = peakAvg
                     )
                 }.collect { state ->
                     _insightsState.value = state

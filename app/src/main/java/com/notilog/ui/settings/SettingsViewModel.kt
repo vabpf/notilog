@@ -9,8 +9,8 @@ import androidx.lifecycle.viewModelScope
 import androidx.work.*
 import com.google.gson.JsonParser
 import com.google.gson.JsonSyntaxException
-import com.notilog.data.local.NotificationDao
 import com.notilog.data.local.NotificationEntity
+import com.notilog.data.repository.NotificationRepository
 import com.notilog.ui.theme.ThemeMode
 import com.notilog.ui.theme.ThemePreferences
 import com.notilog.worker.BackupWorker
@@ -23,12 +23,16 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import java.util.concurrent.TimeUnit
+import java.util.zip.GZIPInputStream
+import java.util.zip.GZIPOutputStream
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
 import javax.inject.Inject
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val notificationDao: NotificationDao
+    private val notificationRepository: NotificationRepository
 ) : ViewModel() {
 
     private val prefs = context.getSharedPreferences("notilog_prefs", Context.MODE_PRIVATE)
@@ -121,6 +125,16 @@ class SettingsViewModel @Inject constructor(
         prefs.edit().putString("backup_provider", provider.value).apply()
     }
 
+    fun isBackupProviderAuthenticated(provider: BackupProvider): Boolean {
+        if (!provider.requiresAuth) return true
+        return prefs.getBoolean(provider.authKey, false)
+    }
+
+    fun setBackupProviderAuthenticated(provider: BackupProvider, authenticated: Boolean) {
+        if (!provider.requiresAuth) return
+        prefs.edit().putBoolean(provider.authKey, authenticated).apply()
+    }
+
     fun setBackupFrequency(frequency: BackupFrequency) {
         _backupFrequency.value = frequency
         prefs.edit().putString("backup_frequency", frequency.value).apply()
@@ -133,6 +147,9 @@ class SettingsViewModel @Inject constructor(
         val raw = uri?.toString()
         _backupFolderUri.value = raw
         prefs.edit().putString("backup_folder_uri", raw).apply()
+        if (uri != null) {
+            setBackupProviderAuthenticated(_backupProvider.value, true)
+        }
         if (_backupEnabled.value) {
             scheduleAutoBackup()
         }
@@ -163,12 +180,14 @@ class SettingsViewModel @Inject constructor(
         val folderUri = _backupFolderUri.value
         if (!shouldScheduleAutoBackup(_backupEnabled.value, folderUri)) return
         val frequency = _backupFrequency.value
+        val provider = _backupProvider.value
+        val networkType = if (provider.requiresAuth) NetworkType.CONNECTED else NetworkType.NOT_REQUIRED
         val request = PeriodicWorkRequestBuilder<BackupWorker>(
             frequency.intervalDays,
             TimeUnit.DAYS
         ).setConstraints(
             Constraints.Builder()
-                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .setRequiredNetworkType(networkType)
                 .setRequiresBatteryNotLow(true)
                 .build()
         ).setInputData(
@@ -192,62 +211,92 @@ class SettingsViewModel @Inject constructor(
         viewModelScope.launch {
             val days = _retentionDays.value
             val threshold = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days.toLong())
-            notificationDao.deleteOldNotifications(threshold)
+            notificationRepository.deleteOldNotifications(threshold)
         }
     }
 
     fun clearAllData() {
         viewModelScope.launch {
-            notificationDao.deleteAllNotifications()
+            notificationRepository.deleteAllNotifications()
         }
     }
 
-    suspend fun buildExportCsv(): String {
-        val notifications = notificationDao.getAllNotifications().first()
-        val header = "systemId,tag,packageName,appName,title,textContent,postTime,isDismissed,category,isDeleted,deletedAt"
-        if (notifications.isEmpty()) return header
+    suspend fun exportDataStreaming(outputStream: java.io.OutputStream) {
+        val bos = outputStream
+        java.util.zip.GZIPOutputStream(bos).bufferedWriter().use { writer ->
+            val jsonWriter = com.google.gson.stream.JsonWriter(writer)
+            jsonWriter.setIndent("  ")
+            jsonWriter.beginArray()
+            
+            val cursor = notificationRepository.getAllNotificationsCursor()
+            cursor.use { c ->
+                val idIdx = c.getColumnIndex("id")
+                val sysIdIdx = c.getColumnIndex("systemId")
+                val tagIdx = c.getColumnIndex("tag")
+                val pkgIdx = c.getColumnIndex("packageName")
+                val appIdx = c.getColumnIndex("appName")
+                val titleIdx = c.getColumnIndex("title")
+                val textIdx = c.getColumnIndex("textContent")
+                val timeIdx = c.getColumnIndex("postTime")
+                val dismissedIdx = c.getColumnIndex("isDismissed")
+                val categoryIdx = c.getColumnIndex("category")
+                val deletedIdx = c.getColumnIndex("isDeleted")
+                val deletedAtIdx = c.getColumnIndex("deletedAt")
 
-        val rows = notifications.joinToString("\n") { notification ->
-            listOf(
-                notification.systemId.toString(),
-                escapeCsv(notification.tag),
-                escapeCsv(notification.packageName),
-                escapeCsv(notification.appName),
-                escapeCsv(notification.title),
-                escapeCsv(notification.textContent),
-                notification.postTime.toString(),
-                notification.isDismissed.toString(),
-                escapeCsv(notification.category),
-                notification.isDeleted.toString(),
-                notification.deletedAt?.toString().orEmpty()
-            ).joinToString(",")
+                while (c.moveToNext()) {
+                    jsonWriter.beginObject()
+                    if (idIdx != -1) jsonWriter.name("id").value(c.getLong(idIdx))
+                    if (sysIdIdx != -1) jsonWriter.name("systemId").value(c.getInt(sysIdIdx))
+                    if (tagIdx != -1) jsonWriter.name("tag").value(c.getString(tagIdx))
+                    if (pkgIdx != -1) jsonWriter.name("packageName").value(c.getString(pkgIdx))
+                    if (appIdx != -1) jsonWriter.name("appName").value(c.getString(appIdx))
+                    if (titleIdx != -1) jsonWriter.name("title").value(c.getString(titleIdx))
+                    if (textIdx != -1) jsonWriter.name("textContent").value(c.getString(textIdx))
+                    if (timeIdx != -1) jsonWriter.name("postTime").value(c.getLong(timeIdx))
+                    if (dismissedIdx != -1) jsonWriter.name("isDismissed").value(c.getInt(dismissedIdx) == 1)
+                    if (categoryIdx != -1) jsonWriter.name("category").value(c.getString(categoryIdx))
+                    if (deletedIdx != -1) jsonWriter.name("isDeleted").value(c.getInt(deletedIdx) == 1)
+                    if (deletedAtIdx != -1 && !c.isNull(deletedAtIdx)) jsonWriter.name("deletedAt").value(c.getLong(deletedAtIdx))
+                    jsonWriter.endObject()
+                }
+            }
+            
+            jsonWriter.endArray()
+            jsonWriter.close()
         }
-        return "$header\n$rows"
     }
 
-    suspend fun importData(content: String): Int {
+    suspend fun importData(stream: InputStream): Int {
+        val bis = stream.buffered()
+        bis.mark(10)
+        val header = bis.read() or (bis.read() shl 8)
+        bis.reset()
+
+        val content = if (header == GZIPInputStream.GZIP_MAGIC) {
+            GZIPInputStream(bis).bufferedReader().use { it.readText() }
+        } else {
+            bis.bufferedReader().use { it.readText() }
+        }
+
         val parsedNotifications = NotificationImportParser.parse(content)
         parsedNotifications.forEach { notification ->
-            notificationDao.insert(notification)
+            notificationRepository.insert(notification)
         }
         return parsedNotifications.size
     }
-
-    private fun escapeCsv(value: String?): String {
-        if (value == null) return ""
-        val escaped = value.replace("\"", "\"\"")
-        return "\"$escaped\""
-    }
-
 }
 
-enum class BackupProvider(val value: String, val label: String) {
-    GOOGLE_DRIVE("google_drive", "Google Drive"),
-    ONEDRIVE("onedrive", "OneDrive");
+enum class BackupProvider(val value: String, val label: String, val requiresAuth: Boolean) {
+    LOCAL("local", "Local folder", false),
+    GOOGLE_DRIVE("google_drive", "Google Drive", true),
+    ONEDRIVE("onedrive", "OneDrive", true);
 
     companion object {
         fun fromStoredValue(value: String?): BackupProvider = entries.firstOrNull { it.value == value } ?: GOOGLE_DRIVE
     }
+
+    val authKey: String
+        get() = "backup_auth_${value}"
 }
 
 enum class BackupFrequency(val value: String, val label: String, val intervalDays: Long) {

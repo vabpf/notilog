@@ -5,6 +5,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -53,6 +54,7 @@ import dagger.hilt.android.AndroidEntryPoint
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
+        installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
@@ -130,7 +132,7 @@ fun NotilogApp() {
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(52.dp),
                             color = MaterialTheme.colorScheme.surfaceVariant,
-                            shadowElevation = 12.dp
+                            shadowElevation = 6.dp
                         ) {
                             Row(
                                 modifier = Modifier

@@ -6,22 +6,21 @@ import android.provider.DocumentsContract
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.notilog.data.local.NotificationDao
+import com.google.gson.stream.JsonWriter
+import com.notilog.data.repository.NotificationRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import java.io.IOException
-import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.Locale
+import java.util.zip.GZIPOutputStream
 
 @HiltWorker
 class BackupWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted workerParams: WorkerParameters,
-    private val notificationDao: NotificationDao
+    private val notificationRepository: NotificationRepository
 ) : CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
@@ -31,36 +30,58 @@ class BackupWorker @AssistedInject constructor(
             val treeDocumentId = DocumentsContract.getTreeDocumentId(treeUri)
             val treeDocumentUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, treeDocumentId)
 
-            val notifications = notificationDao.getAllNotifications().first()
-            val fileName = "notilog_backup_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())}.csv"
+            val timestamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(Date())
+            val fileName = "notilog_backup_$timestamp.json.gz"
+            
             val backupFileUri = DocumentsContract.createDocument(
                 applicationContext.contentResolver,
                 treeDocumentUri,
-                "text/csv",
+                "application/gzip",
                 fileName
             ) ?: return@withContext Result.retry()
+            
             val outputStream = applicationContext.contentResolver.openOutputStream(backupFileUri) ?: return@withContext Result.retry()
 
-            outputStream.bufferedWriter().use { writer ->
-                writer.write("systemId,tag,packageName,appName,title,textContent,postTime,isDismissed,category,isDeleted,deletedAt\n")
-                notifications.forEach { notification ->
-                    writer.write(
-                        listOf(
-                            notification.systemId.toString(),
-                            escapeCsv(notification.tag),
-                            escapeCsv(notification.packageName),
-                            escapeCsv(notification.appName),
-                            escapeCsv(notification.title),
-                            escapeCsv(notification.textContent),
-                            notification.postTime.toString(),
-                            notification.isDismissed.toString(),
-                            escapeCsv(notification.category),
-                            notification.isDeleted.toString(),
-                            notification.deletedAt?.toString().orEmpty()
-                        ).joinToString(",")
-                    )
-                    writer.write("\n")
+            GZIPOutputStream(outputStream).bufferedWriter().use { writer ->
+                val jsonWriter = JsonWriter(writer)
+                jsonWriter.setIndent("  ")
+                jsonWriter.beginArray()
+                
+                val cursor = notificationRepository.getAllNotificationsCursor()
+                cursor.use { c ->
+                    val idIdx = c.getColumnIndex("id")
+                    val sysIdIdx = c.getColumnIndex("systemId")
+                    val tagIdx = c.getColumnIndex("tag")
+                    val pkgIdx = c.getColumnIndex("packageName")
+                    val appIdx = c.getColumnIndex("appName")
+                    val titleIdx = c.getColumnIndex("title")
+                    val textIdx = c.getColumnIndex("textContent")
+                    val timeIdx = c.getColumnIndex("postTime")
+                    val dismissedIdx = c.getColumnIndex("isDismissed")
+                    val categoryIdx = c.getColumnIndex("category")
+                    val deletedIdx = c.getColumnIndex("isDeleted")
+                    val deletedAtIdx = c.getColumnIndex("deletedAt")
+
+                    while (c.moveToNext()) {
+                        jsonWriter.beginObject()
+                        if (idIdx != -1) jsonWriter.name("id").value(c.getLong(idIdx))
+                        if (sysIdIdx != -1) jsonWriter.name("systemId").value(c.getInt(sysIdIdx))
+                        if (tagIdx != -1) jsonWriter.name("tag").value(c.getString(tagIdx))
+                        if (pkgIdx != -1) jsonWriter.name("packageName").value(c.getString(pkgIdx))
+                        if (appIdx != -1) jsonWriter.name("appName").value(c.getString(appIdx))
+                        if (titleIdx != -1) jsonWriter.name("title").value(c.getString(titleIdx))
+                        if (textIdx != -1) jsonWriter.name("textContent").value(c.getString(textIdx))
+                        if (timeIdx != -1) jsonWriter.name("postTime").value(c.getLong(timeIdx))
+                        if (dismissedIdx != -1) jsonWriter.name("isDismissed").value(c.getInt(dismissedIdx) == 1)
+                        if (categoryIdx != -1) jsonWriter.name("category").value(c.getString(categoryIdx))
+                        if (deletedIdx != -1) jsonWriter.name("isDeleted").value(c.getInt(deletedIdx) == 1)
+                        if (deletedAtIdx != -1 && !c.isNull(deletedAtIdx)) jsonWriter.name("deletedAt").value(c.getLong(deletedAtIdx))
+                        jsonWriter.endObject()
+                    }
                 }
+                
+                jsonWriter.endArray()
+                jsonWriter.close()
             }
 
             Result.success()
@@ -68,18 +89,9 @@ class BackupWorker @AssistedInject constructor(
             Result.failure()
         } catch (error: IOException) {
             Result.retry()
-        } catch (error: IllegalStateException) {
-            Result.retry()
-        } catch (error: IllegalArgumentException) {
-            Result.failure()
         } catch (error: Exception) {
             Result.retry()
         }
-    }
-
-    private fun escapeCsv(value: String?): String {
-        if (value == null) return ""
-        return "\"${value.replace("\"", "\"\"")}\""
     }
 
     companion object {

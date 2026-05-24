@@ -3,16 +3,24 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Rounded background plate -->
-    <path
-        android:fillColor="@color/primary_blue"
-        android:pathData="M54,8C28.6,8 8,28.6 8,54s20.6,46 46,46 46,-20.6 46,-46S79.4,8 54,8z"/>
     <!-- Notification Bell (white) -->
     <path
         android:fillColor="@color/white"
         android:pathData="M54,28c-8.84,0 -16,7.16 -16,16v12l-4,4v4h40v-4l-4,-4v-12c0,-8.84 -7.16,-16 -16,-16zM46,64c0,4.42 3.58,8 8,8s8,-3.58 8,-8H46z"/>
-    <!-- Document/Log lines (white) -->
+    <!-- Document/Log lines (white with rounded caps) -->
     <path
-        android:fillColor="@color/white"
-        android:pathData="M44,70h20v2h-20zM44,74h20v2h-20zM44,78h14v2h-14z"/>
+        android:strokeColor="@color/white"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M45,71 L63,71"/>
+    <path
+        android:strokeColor="@color/white"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M45,75 L63,75"/>
+    <path
+        android:strokeColor="@color/white"
+        android:strokeWidth="2.5"
+        android:strokeLineCap="round"
+        android:pathData="M45,79 L57,79"/>
 </vector>

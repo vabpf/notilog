@@ -8,19 +8,22 @@ import kotlinx.coroutines.flow.Flow
 
 @Dao
 interface NotificationDao {
+    @Query("SELECT * FROM notifications ORDER BY postTime DESC")
+    fun getAllNotificationsCursor(): android.database.Cursor
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insert(notification: NotificationEntity)
 
-    @Query("SELECT * FROM notifications WHERE isDeleted = 0 ORDER BY postTime DESC")
+    @Query("SELECT * FROM notifications WHERE isDeleted = 0 AND packageName NOT IN (SELECT packageName FROM blacklisted_apps) ORDER BY postTime DESC")
     fun getAllNotifications(): Flow<List<NotificationEntity>>
 
-    @Query("SELECT * FROM notifications WHERE isDeleted = 0 AND packageName = :packageName AND (title LIKE '%' || :query || '%' OR textContent LIKE '%' || :query || '%') ORDER BY postTime DESC")
+    @Query("SELECT * FROM notifications WHERE isDeleted = 0 AND packageName = :packageName AND packageName NOT IN (SELECT packageName FROM blacklisted_apps) AND (title LIKE '%' || :query || '%' OR textContent LIKE '%' || :query || '%') ORDER BY postTime DESC")
     fun searchNotifications(packageName: String, query: String): Flow<List<NotificationEntity>>
 
-    @Query("SELECT * FROM notifications WHERE isDeleted = 0 AND (title LIKE '%' || :query || '%' OR textContent LIKE '%' || :query || '%') ORDER BY postTime DESC")
+    @Query("SELECT * FROM notifications WHERE isDeleted = 0 AND packageName NOT IN (SELECT packageName FROM blacklisted_apps) AND (title LIKE '%' || :query || '%' OR textContent LIKE '%' || :query || '%') ORDER BY postTime DESC")
     fun searchAllNotifications(query: String): Flow<List<NotificationEntity>>
 
-    @Query("SELECT * FROM notifications WHERE isDeleted = 0 AND category = :category ORDER BY postTime DESC")
+    @Query("SELECT * FROM notifications WHERE isDeleted = 0 AND category = :category AND packageName NOT IN (SELECT packageName FROM blacklisted_apps) ORDER BY postTime DESC")
     fun getNotificationsByCategory(category: String): Flow<List<NotificationEntity>>
 
     @Query("UPDATE notifications SET isDeleted = 1, deletedAt = :deletedAt WHERE id = :id")
@@ -29,7 +32,7 @@ interface NotificationDao {
     @Query("UPDATE notifications SET isDeleted = 1, deletedAt = :deletedAt WHERE id IN (:ids)")
     suspend fun softDeleteByIds(ids: List<Long>, deletedAt: Long)
 
-    @Query("DELETE FROM notifications WHERE postTime < :threshold")
+    @Query("DELETE FROM notifications WHERE isDeleted = 0 AND postTime < :threshold")
     suspend fun deleteOldNotifications(threshold: Long)
 
     @Query("DELETE FROM notifications")
@@ -50,7 +53,7 @@ interface NotificationDao {
     @Query("DELETE FROM notifications WHERE id = :id")
     suspend fun deleteById(id: Long)
 
-    @Query("SELECT category, COUNT(*) as count FROM notifications WHERE isDeleted = 0 GROUP BY category ORDER BY count DESC")
+    @Query("SELECT category, COUNT(*) as count FROM notifications WHERE isDeleted = 0 AND packageName NOT IN (SELECT packageName FROM blacklisted_apps) GROUP BY category ORDER BY count DESC")
     fun getCategoryNotificationCounts(): Flow<List<CategoryCountEntry>>
 
     @Query("UPDATE notifications SET isDismissed = 1 WHERE packageName = :packageName AND systemId = :systemId AND (tag = :tag OR (tag IS NULL AND :tag IS NULL))")
@@ -62,40 +65,59 @@ interface NotificationDao {
     @Query("SELECT * FROM notifications WHERE packageName = :packageName AND systemId = :systemId AND (tag = :tag OR (tag IS NULL AND :tag IS NULL)) ORDER BY postTime DESC")
     fun getVersionsBySystemId(packageName: String, systemId: Int, tag: String?): Flow<List<NotificationEntity>>
 
+    @Query("UPDATE notifications SET isDeleted = 1, deletedAt = :deletedAt WHERE packageName = :packageName AND systemId = :systemId AND (tag = :tag OR (tag IS NULL AND :tag IS NULL))")
+    suspend fun softDeleteBySystemId(packageName: String, systemId: Int, tag: String?, deletedAt: Long)
+
     @Query("DELETE FROM notifications WHERE packageName = :packageName AND systemId = :systemId AND (tag = :tag OR (tag IS NULL AND :tag IS NULL))")
     suspend fun deleteBySystemId(packageName: String, systemId: Int, tag: String?)
 
-    @Query("SELECT packageName, appName, MAX(postTime) as lastPostTime FROM notifications WHERE isDeleted = 0 GROUP BY packageName ORDER BY MAX(postTime) DESC LIMIT :limit")
+    @Query("SELECT packageName, appName, MAX(postTime) as lastPostTime FROM notifications WHERE isDeleted = 0 AND packageName NOT IN (SELECT packageName FROM blacklisted_apps) GROUP BY packageName ORDER BY MAX(postTime) DESC LIMIT :limit")
     fun getRecentApps(limit: Int): Flow<List<AppInfoEntry>>
 
-    @Query("SELECT packageName, appName FROM notifications WHERE isDeleted = 0 GROUP BY packageName ORDER BY appName ASC")
+    @Query("SELECT packageName, appName FROM notifications WHERE isDeleted = 0 AND packageName NOT IN (SELECT packageName FROM blacklisted_apps) GROUP BY packageName ORDER BY appName ASC")
     fun getAllApps(): Flow<List<AppInfoEntry>>
 
     // Insights queries
-    @Query("SELECT COUNT(*) FROM notifications WHERE isDeleted = 0")
+    @Query("SELECT COUNT(*) FROM notifications WHERE isDeleted = 0 AND packageName NOT IN (SELECT packageName FROM blacklisted_apps)")
     fun getTotalNotificationCount(): Flow<Int>
 
-    @Query("SELECT COUNT(*) FROM notifications WHERE isDeleted = 0 AND postTime >= :startOfDay")
+    @Query("SELECT COUNT(*) FROM notifications WHERE isDeleted = 0 AND postTime >= :startOfDay AND packageName NOT IN (SELECT packageName FROM blacklisted_apps)")
     fun getNotificationCountSince(startOfDay: Long): Flow<Int>
 
-    @Query("SELECT category, COUNT(*) as count FROM notifications WHERE isDeleted = 0 GROUP BY category ORDER BY count DESC")
+    @Query("SELECT category, COUNT(*) as count FROM notifications WHERE isDeleted = 0 AND packageName NOT IN (SELECT packageName FROM blacklisted_apps) GROUP BY category ORDER BY count DESC")
     fun getCategoryBreakdown(): Flow<List<CategoryCountEntry>>
 
-    @Query("SELECT packageName, appName, COUNT(*) as count FROM notifications WHERE isDeleted = 0 GROUP BY packageName ORDER BY count DESC LIMIT :limit")
+    @Query("SELECT packageName, appName, COUNT(*) as count FROM notifications WHERE isDeleted = 0 AND packageName NOT IN (SELECT packageName FROM blacklisted_apps) GROUP BY packageName ORDER BY count DESC LIMIT :limit")
     fun getTopApps(limit: Int): Flow<List<AppCountEntry>>
 
     @Query("""
         SELECT strftime('%Y-%m-%d', postTime/1000, 'unixepoch') as date, COUNT(*) as count 
         FROM notifications 
         WHERE isDeleted = 0 AND postTime >= :sinceTimestamp 
+        AND packageName NOT IN (SELECT packageName FROM blacklisted_apps)
         GROUP BY strftime('%Y-%m-%d', postTime/1000, 'unixepoch') 
         ORDER BY date DESC
     """)
     fun getDailyCounts(sinceTimestamp: Long): Flow<List<DailyCountEntry>>
+
+    @Query("""
+        SELECT strftime('%H', postTime/1000, 'unixepoch', 'localtime') as hour, COUNT(*) as count 
+        FROM notifications 
+        WHERE isDeleted = 0 
+        AND packageName NOT IN (SELECT packageName FROM blacklisted_apps)
+        GROUP BY hour 
+        ORDER BY hour ASC
+    """)
+    fun getHourlyDistribution(): Flow<List<HourlyCountEntry>>
 }
 
 data class CategoryCountEntry(
     val category: String,
+    val count: Int
+)
+
+data class HourlyCountEntry(
+    val hour: String,
     val count: Int
 )
 

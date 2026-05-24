@@ -3,4 +3,5 @@
     <color name="white">#FFFFFFFF</color>
     <color name="primary_blue">#3B82F6</color>
     <color name="red_error">#DC2626</color>
+    <color name="splash_background">#EBF0F4</color>
 </resources>

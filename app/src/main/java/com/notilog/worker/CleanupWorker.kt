@@ -4,7 +4,7 @@ import android.content.Context
 import androidx.hilt.work.HiltWorker
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
-import com.notilog.data.local.NotificationDao
+import com.notilog.data.repository.NotificationRepository
 import dagger.assisted.Assisted
 import dagger.assisted.AssistedInject
 import kotlinx.coroutines.Dispatchers
@@ -15,7 +15,7 @@ import java.util.concurrent.TimeUnit
 class CleanupWorker @AssistedInject constructor(
     @Assisted context: Context,
     @Assisted workerParams: WorkerParameters,
-    private val notificationDao: NotificationDao
+    private val notificationRepository: NotificationRepository
 ) : CoroutineWorker(context, workerParams) {
 
     override suspend fun doWork(): Result = withContext(Dispatchers.IO) {
@@ -27,7 +27,7 @@ class CleanupWorker @AssistedInject constructor(
             val days = prefs.getInt("retention_days", 30)
             val threshold = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(days.toLong())
             
-            notificationDao.deleteOldNotifications(threshold)
+            notificationRepository.deleteOldNotifications(threshold)
             Result.success()
         } catch (e: Exception) {
             e.printStackTrace()

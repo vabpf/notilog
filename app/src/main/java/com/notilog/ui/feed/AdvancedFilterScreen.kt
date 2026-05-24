@@ -1,6 +1,9 @@
 package com.notilog.ui.feed
 
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -34,6 +37,9 @@ fun AdvancedFilterScreen(
     val selectedApps = remember { mutableStateListOf<String>() }
     val selectedCategories = remember { mutableStateListOf<String>() }
     var selectedTimeRange by remember { mutableStateOf("This Week") }
+    var isResetPressed by remember { mutableStateOf(false) }
+    var showCustomDatePicker by remember { mutableStateOf(false) }
+    var showAppSearchDialog by remember { mutableStateOf(false) }
 
     var headerBottomPx by remember { mutableStateOf(0) }
     val density = LocalDensity.current
@@ -59,7 +65,7 @@ fun AdvancedFilterScreen(
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.primary
                     ),
-                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 8.dp)
+                    elevation = ButtonDefaults.buttonElevation(defaultElevation = 4.dp)
                 ) {
                     Icon(Icons.Rounded.Check, contentDescription = null)
                     Spacer(Modifier.width(8.dp))
@@ -96,12 +102,13 @@ fun AdvancedFilterScreen(
                                 onQueryChange = { searchQuery = it }
                             )
                         }
-                        item { AppSelectionSection() }
+                        item { AppSelectionSection(onShowAppSearch = { showAppSearchDialog = true }) }
                         item { CategoryGridSection() }
                         item {
                             TimeRangeSection(
                                 selectedRange = selectedTimeRange,
-                                onRangeSelected = { selectedTimeRange = it }
+                                onRangeSelected = { selectedTimeRange = it },
+                                onShowCustomDatePicker = { showCustomDatePicker = true }
                             )
                         }
                     }
@@ -113,7 +120,7 @@ fun AdvancedFilterScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .statusBarsPadding()
-                    .padding(top = 12.dp, bottom = 16.dp)
+                    .padding(top = 12.dp, bottom = 16.dp, start = 12.dp, end = 12.dp)
                     .onGloballyPositioned { coords ->
                         headerBottomPx =
                             (coords.positionInRoot().y + coords.size.height).toInt()
@@ -131,11 +138,50 @@ fun AdvancedFilterScreen(
                         fontWeight = FontWeight.Bold
                     )
                 }
-                TextButton(onClick = { /* Reset all */ }) {
-                    Text("Reset", style = MaterialTheme.typography.labelLarge)
+                val resetBgColor by animateColorAsState(
+                    targetValue = if (isResetPressed) MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
+                                   else Color(0xFFF0F0F0),
+                    label = "resetButtonBg"
+                )
+                Surface(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(resetBgColor)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = { isResetPressed = !isResetPressed }
+                        )
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    color = Color.Transparent
+                ) {
+                    Text(
+                        "Reset",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                    )
                 }
             }
         }
+    }
+
+    if (showAppSearchDialog) {
+        AppSearchDialog(
+            onDismiss = { showAppSearchDialog = false },
+            onAppSelected = { app ->
+                selectedApps.add(app)
+                showAppSearchDialog = false
+            }
+        )
+    }
+
+    if (showCustomDatePicker) {
+        CustomDatePickerDialog(
+            onDismiss = { showCustomDatePicker = false },
+            onDateRangeSelected = { _, _ ->
+                showCustomDatePicker = false
+            }
+        )
     }
 }
 
@@ -148,7 +194,7 @@ private fun FilterSearchSection(query: String, onQueryChange: (String) -> Unit) 
         modifier = Modifier.fillMaxWidth(),
         placeholder = { Text("Search senders or keywords...") },
         leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
-        shape = RoundedCornerShape(32.dp),
+        shape = RoundedCornerShape(20.dp),
         colors = TextFieldDefaults.outlinedTextFieldColors(
             focusedBorderColor = MaterialTheme.colorScheme.primary,
             unfocusedBorderColor = Color.Transparent,
@@ -159,14 +205,24 @@ private fun FilterSearchSection(query: String, onQueryChange: (String) -> Unit) 
 }
 
 @Composable
-private fun AppSelectionSection() {
+private fun AppSelectionSection(onShowAppSearch: () -> Unit) {
     Column {
-        Text(
-            "Apps",
-            style = MaterialTheme.typography.titleLarge,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(bottom = 12.dp)
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                "Apps",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            TextButton(onClick = onShowAppSearch) {
+                Text("See More >", style = MaterialTheme.typography.labelSmall)
+            }
+        }
         LazyRow(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
             items(listOf("Mail", "Messages", "Slack", "Calendar", "System")) { app ->
                 Column(
@@ -176,7 +232,7 @@ private fun AppSelectionSection() {
                     Box(
                         modifier = Modifier
                             .size(56.dp)
-                            .clip(RoundedCornerShape(16.dp))
+                            .clip(RoundedCornerShape(20.dp))
                             .background(
                                 if (app == "Mail") MaterialTheme.colorScheme.primaryContainer
                                 else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
@@ -200,6 +256,65 @@ private fun AppSelectionSection() {
             }
         }
     }
+}
+
+@Composable
+private fun AppSearchDialog(
+    onDismiss: () -> Unit,
+    onAppSelected: (String) -> Unit
+) {
+    var searchQuery by remember { mutableStateOf("") }
+    val mockApps = listOf(
+        "Mail", "Messages", "Slack", "Calendar", "System",
+        "Gmail", "WhatsApp", "Telegram", "Discord", "Teams",
+        "Twitter", "Instagram", "Reddit", "LinkedIn", "Facebook"
+    )
+    val filteredApps = mockApps.filter { 
+        it.contains(searchQuery, ignoreCase = true) 
+    }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Search Apps") },
+        text = {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 400.dp)
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                    placeholder = { Text("Search...") },
+                    leadingIcon = { Icon(Icons.Rounded.Search, contentDescription = null) },
+                    shape = RoundedCornerShape(12.dp),
+                    singleLine = true
+                )
+                LazyColumn(
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    items(filteredApps) { app ->
+                        Text(
+                            app,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onAppSelected(app) }
+                                .padding(12.dp),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Close")
+            }
+        }
+    )
 }
 
 @Composable
@@ -234,10 +349,16 @@ private fun CategoryGridSection() {
 }
 
 @Composable
-private fun TimeRangeSection(selectedRange: String, onRangeSelected: (String) -> Unit) {
+private fun TimeRangeSection(
+    selectedRange: String,
+    onRangeSelected: (String) -> Unit,
+    onShowCustomDatePicker: () -> Unit
+) {
     Column {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -246,11 +367,13 @@ private fun TimeRangeSection(selectedRange: String, onRangeSelected: (String) ->
                 style = MaterialTheme.typography.titleLarge,
                 fontWeight = FontWeight.Bold
             )
-            Text(
-                "Custom >",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary
-            )
+            TextButton(onClick = onShowCustomDatePicker) {
+                Text(
+                    "Custom >",
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
         }
         Spacer(Modifier.height(12.dp))
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -287,10 +410,10 @@ private fun TimeRangeCard(
 ) {
     Surface(
         modifier = modifier.height(80.dp),
-        shape = RoundedCornerShape(16.dp),
+        shape = RoundedCornerShape(20.dp),
         color = if (isSelected) MaterialTheme.colorScheme.secondaryContainer
                 else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        shadowElevation = 2.dp
+        shadowElevation = 1.dp
     ) {
         Column(
             modifier = Modifier
@@ -312,6 +435,66 @@ private fun TimeRangeCard(
             )
         }
     }
+}
+
+@Composable
+private fun CustomDatePickerDialog(
+    onDismiss: () -> Unit,
+    onDateRangeSelected: (String, String) -> Unit
+) {
+    var startDate by remember { mutableStateOf("") }
+    var endDate by remember { mutableStateOf("") }
+    
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Select Date Range") },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    "Start Date",
+                    style = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+                OutlinedTextField(
+                    value = startDate,
+                    onValueChange = { startDate = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 12.dp),
+                    placeholder = { Text("MM/DD/YYYY") },
+                    singleLine = true
+                )
+                Text(
+                    "End Date",
+                    style = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier.padding(bottom = 4.dp)
+                )
+                OutlinedTextField(
+                    value = endDate,
+                    onValueChange = { endDate = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("MM/DD/YYYY") },
+                    singleLine = true
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    if (startDate.isNotEmpty() && endDate.isNotEmpty()) {
+                        onDateRangeSelected(startDate, endDate)
+                    }
+                }
+            ) {
+                Text("Apply")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        }
+    )
 }
 
 @Composable
