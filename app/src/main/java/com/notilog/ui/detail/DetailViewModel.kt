@@ -7,6 +7,8 @@ import com.notilog.data.local.NotificationEntity
 import com.notilog.data.repository.BlacklistRepository
 import com.notilog.data.repository.CategoryRepository
 import com.notilog.data.repository.NotificationRepository
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -26,7 +28,12 @@ class DetailViewModel @Inject constructor(
 
     fun updateCategory(packageName: String, newCategory: String) {
         viewModelScope.launch {
-            categoryRepository.updateOverride(packageName, newCategory)
+            coroutineScope {
+                val override = async { categoryRepository.updateOverride(packageName, newCategory) }
+                val records = async { notificationRepository.updateCategoryForPackage(packageName, newCategory) }
+                override.await()
+                records.await()
+            }
         }
     }
 

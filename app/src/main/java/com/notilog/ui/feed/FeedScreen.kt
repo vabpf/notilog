@@ -87,6 +87,7 @@ import com.notilog.ui.theme.StatusBadge
 import com.notilog.ui.theme.Colors
 import com.notilog.ui.theme.TimeChip
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.platform.LocalFocusManager
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -127,6 +128,7 @@ fun FeedScreen(
         }
     }
     val coroutineScope = rememberCoroutineScope()
+    val focusManager = LocalFocusManager.current
 
     val quickFilterBarVisible = remember(categoryCounts) {
         categoryCounts.any { it.count > 0 && it.category != "UNCATEGORIZED" }
@@ -138,8 +140,12 @@ fun FeedScreen(
             Surface(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(top = headerBottomDp + 20.dp + (if (quickFilterBarVisible) 0.dp else 12.dp)),
-
+                    .padding(top = headerBottomDp + 20.dp + (if (quickFilterBarVisible) 0.dp else 12.dp))
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        onClick = { focusManager.clearFocus() }
+                    ),
 
                 shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
                 color = MaterialTheme.colorScheme.surface,
@@ -149,7 +155,9 @@ fun FeedScreen(
                     if (isSelectionMode) {
                         SelectionTopBar(
                             selectedCount = selectedIds.size,
+                            totalCount = notifications.size,
                             onClearSelection = viewModel::clearSelection,
+                            onSelectAll = viewModel::selectAll,
                             onDeleteSelected = viewModel::deleteSelected,
                             onBlacklistSelected = viewModel::blacklistSelected
                         )
@@ -685,7 +693,9 @@ fun FeedSearchSection(
 @Composable
 fun SelectionTopBar(
     selectedCount: Int,
+    totalCount: Int,
     onClearSelection: () -> Unit,
+    onSelectAll: () -> Unit,
     onDeleteSelected: () -> Unit,
     onBlacklistSelected: () -> Unit
 ) {
@@ -713,7 +723,7 @@ fun SelectionTopBar(
                             fontWeight = FontWeight.Bold
                         )
                     }
-                    Text("selected", fontWeight = FontWeight.SemiBold)
+                    Text("selected", style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.SemiBold)
                 }
             },
             navigationIcon = {
@@ -722,6 +732,12 @@ fun SelectionTopBar(
                 }
             },
             actions = {
+                TextButton(
+                    onClick = onSelectAll,
+                    enabled = selectedCount < totalCount
+                ) {
+                    Text("Select all", fontWeight = FontWeight.SemiBold)
+                }
                 IconButton(onClick = onBlacklistSelected) {
                     Icon(Icons.Rounded.Lock, contentDescription = "Block selected")
                 }
@@ -731,7 +747,8 @@ fun SelectionTopBar(
             },
             colors = TopAppBarDefaults.topAppBarColors(
                 containerColor = Color.Transparent
-            )
+            ),
+            windowInsets = WindowInsets(0, 0, 0, 0)
         )
     }
 }

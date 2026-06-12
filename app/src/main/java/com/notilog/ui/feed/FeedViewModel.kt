@@ -1,6 +1,7 @@
 package com.notilog.ui.feed
 
 import android.content.Context
+import androidx.compose.runtime.Stable
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -26,6 +27,7 @@ enum class SortOption {
     NEWEST, OLDEST, APP_NAME
 }
 
+@Stable
 data class FilterState(
     val dateRange: DateRangeOption = DateRangeOption.ALL,
     val customStartDate: Long? = null,
@@ -183,10 +185,10 @@ class FeedViewModel @Inject constructor(
 
     val blacklistedPackages: StateFlow<Set<String>> = blacklistRepository.getAll()
         .map { list -> list.map { it.packageName }.toSet() }
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptySet())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptySet())
 
     val categoryCounts: StateFlow<List<CategoryCountEntry>> = notificationRepository.getCategoryNotificationCounts()
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     @OptIn(ExperimentalCoroutinesApi::class, FlowPreview::class)
     val notifications: StateFlow<List<NotificationEntity>> = combine(
@@ -219,9 +221,10 @@ class FeedViewModel @Inject constructor(
             list.filter { notification ->
                 if (queryTerms.isEmpty()) true
                 else {
+                    val appNameText = notification.appName.lowercase().normalize()
                     val titleText = (notification.title ?: "").lowercase().normalize()
                     val contentText = (notification.textContent ?: "").lowercase().normalize()
-                    val searchText = "$titleText $contentText".trim()
+                    val searchText = "$appNameText $titleText $contentText".trim()
                     queryTerms.all { term -> fuzzyMatch(term, searchText) }
                 }
             }.filter { notification ->
@@ -249,7 +252,7 @@ class FeedViewModel @Inject constructor(
                 }
             }
         }
-    }.stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun setSearchQuery(query: String) {
         _searchQuery.value = query
@@ -263,6 +266,10 @@ class FeedViewModel @Inject constructor(
     fun toggleSelection(id: Long) {
         val current = _selectedIds.value
         _selectedIds.value = if (id in current) current - id else current + id
+    }
+
+    fun selectAll() {
+        _selectedIds.value = notifications.value.map { it.id }.toSet()
     }
 
     fun clearSelection() {

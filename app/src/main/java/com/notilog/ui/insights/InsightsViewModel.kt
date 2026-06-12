@@ -1,5 +1,6 @@
 package com.notilog.ui.insights
 
+import androidx.compose.runtime.Stable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.notilog.data.local.AppCountEntry
@@ -15,34 +16,40 @@ import kotlinx.coroutines.launch
 import java.util.Calendar
 import javax.inject.Inject
 
+@Stable
 data class InsightsSummary(
     val totalCount: Int = 0,
     val todayCount: Int = 0,
     val weekCount: Int = 0
 )
 
+@Stable
 data class CategoryInsight(
     val category: String,
     val count: Int,
     val percentage: Float
 )
 
+@Stable
 data class AppInsight(
     val packageName: String,
     val appName: String,
     val count: Int
 )
 
+@Stable
 data class DailyInsight(
     val date: String,
     val count: Int
 )
 
+@Stable
 data class HourlyInsight(
     val hour: Int,
     val count: Int
 )
 
+@Stable
 data class InsightsState(
     val summary: InsightsSummary = InsightsSummary(),
     val categoryInsights: List<CategoryInsight> = emptyList(),

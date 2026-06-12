@@ -1,5 +1,6 @@
 package com.notilog.data.local
 
+import androidx.compose.runtime.Stable
 import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
@@ -17,10 +18,10 @@ interface NotificationDao {
     @Query("SELECT * FROM notifications WHERE isDeleted = 0 AND packageName NOT IN (SELECT packageName FROM blacklisted_apps) ORDER BY postTime DESC")
     fun getAllNotifications(): Flow<List<NotificationEntity>>
 
-    @Query("SELECT * FROM notifications WHERE isDeleted = 0 AND packageName = :packageName AND packageName NOT IN (SELECT packageName FROM blacklisted_apps) AND (title LIKE '%' || :query || '%' OR textContent LIKE '%' || :query || '%') ORDER BY postTime DESC")
+    @Query("SELECT * FROM notifications WHERE isDeleted = 0 AND packageName = :packageName AND packageName NOT IN (SELECT packageName FROM blacklisted_apps) AND (appName LIKE '%' || :query || '%' OR title LIKE '%' || :query || '%' OR textContent LIKE '%' || :query || '%') ORDER BY postTime DESC")
     fun searchNotifications(packageName: String, query: String): Flow<List<NotificationEntity>>
 
-    @Query("SELECT * FROM notifications WHERE isDeleted = 0 AND packageName NOT IN (SELECT packageName FROM blacklisted_apps) AND (title LIKE '%' || :query || '%' OR textContent LIKE '%' || :query || '%') ORDER BY postTime DESC")
+    @Query("SELECT * FROM notifications WHERE isDeleted = 0 AND packageName NOT IN (SELECT packageName FROM blacklisted_apps) AND (appName LIKE '%' || :query || '%' OR title LIKE '%' || :query || '%' OR textContent LIKE '%' || :query || '%') ORDER BY postTime DESC")
     fun searchAllNotifications(query: String): Flow<List<NotificationEntity>>
 
     @Query("SELECT * FROM notifications WHERE isDeleted = 0 AND category = :category AND packageName NOT IN (SELECT packageName FROM blacklisted_apps) ORDER BY postTime DESC")
@@ -55,6 +56,9 @@ interface NotificationDao {
 
     @Query("SELECT category, COUNT(*) as count FROM notifications WHERE isDeleted = 0 AND packageName NOT IN (SELECT packageName FROM blacklisted_apps) GROUP BY category ORDER BY count DESC")
     fun getCategoryNotificationCounts(): Flow<List<CategoryCountEntry>>
+
+    @Query("UPDATE notifications SET category = :category WHERE packageName = :packageName AND isDeleted = 0")
+    suspend fun updateCategoryForPackage(packageName: String, category: String)
 
     @Query("UPDATE notifications SET isDismissed = 1 WHERE packageName = :packageName AND systemId = :systemId AND (tag = :tag OR (tag IS NULL AND :tag IS NULL))")
     suspend fun markAsDismissed(packageName: String, systemId: Int, tag: String?)
@@ -111,28 +115,33 @@ interface NotificationDao {
     fun getHourlyDistribution(): Flow<List<HourlyCountEntry>>
 }
 
+@Stable
 data class CategoryCountEntry(
     val category: String,
     val count: Int
 )
 
+@Stable
 data class HourlyCountEntry(
     val hour: String,
     val count: Int
 )
 
+@Stable
 data class AppInfoEntry(
     val packageName: String,
     val appName: String,
     val lastPostTime: Long? = null
 )
 
+@Stable
 data class AppCountEntry(
     val packageName: String,
     val appName: String,
     val count: Int
 )
 
+@Stable
 data class DailyCountEntry(
     val date: String,
     val count: Int

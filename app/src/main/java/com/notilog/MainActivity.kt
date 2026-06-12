@@ -27,6 +27,7 @@ import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -86,6 +87,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@Stable
 data class BottomNavItem(
     val screen: Screen,
     val label: String,

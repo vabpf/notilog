@@ -50,6 +50,9 @@ class NotificationRepository @Inject constructor(
 
     fun getCategoryNotificationCounts(): Flow<List<CategoryCountEntry>> = notificationDao.getCategoryNotificationCounts()
 
+    suspend fun updateCategoryForPackage(packageName: String, category: String) =
+        notificationDao.updateCategoryForPackage(packageName, category)
+
     suspend fun markAsDismissed(packageName: String, systemId: Int, tag: String?) =
         notificationDao.markAsDismissed(packageName, systemId, tag)
 

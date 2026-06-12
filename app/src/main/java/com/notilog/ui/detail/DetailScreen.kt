@@ -71,7 +71,6 @@ fun DetailScreen(
     val context = LocalContext.current
 
     Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        // Content area with rounded top corners (drawn first)
         Surface(
             modifier = Modifier
                 .fillMaxSize()
@@ -84,89 +83,18 @@ fun DetailScreen(
                 contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 120.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                item {
-                    Surface(
-                        shape = RoundedCornerShape(20.dp),
-                        color = MaterialTheme.colorScheme.surface,
-                        shadowElevation = 1.dp
-                    ) {
-                        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                                Box {
-                                    AppIcon(packageName, size = 64)
-                                    Box(
-                                        modifier = Modifier
-                                            .align(Alignment.BottomEnd)
-                                            .size(24.dp)
-                                            .clip(CircleShape)
-                                            .background(MaterialTheme.colorScheme.primary)
-                                            .shadow(elevation = 1.dp, shape = CircleShape, ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
-                                        contentAlignment = Alignment.Center
-                                    ) {
-                                        Text("${versions.size}", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
-                                    }
-                                }
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(appName, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
-                                    Text(packageName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    
-                                    var showCategoryMenu by remember { mutableStateOf(false) }
-                                    val currentCategory = viewModel.getCategory(packageName)
-                                    
-                                    Spacer(Modifier.height(8.dp))
-                                    
-                                    Box {
-                                        val categoryColor = Colors.getCategoryColor(currentCategory)
-                                        Surface(
-                                            onClick = { showCategoryMenu = true },
-                                            shape = RoundedCornerShape(20.dp),
-                                            color = categoryColor.copy(alpha = 0.15f),
-                                            contentColor = categoryColor
-                                        ) {
-                                            Row(
-                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(4.dp)
-                                            ) {
-                                                Icon(Icons.Rounded.List, contentDescription = null, modifier = Modifier.size(14.dp))
-                                                Text(
-                                                    text = formatCategory(currentCategory),
-                                                    style = MaterialTheme.typography.labelMedium,
-                                                    fontWeight = FontWeight.Bold
-                                                )
-                                            }
-                                        }
-
-                                        DropdownMenu(
-                                            expanded = showCategoryMenu,
-                                            onDismissRequest = { showCategoryMenu = false }
-                                        ) {
-                                            val categories = listOf(
-                                                "COMMUNICATION", "SOCIAL", "NEWS_AND_MAGAZINES", "LIFESTYLE",
-                                                "ENTERTAINMENT", "BUSINESS", "TOOLS", "FINANCE", "SHOPPING",
-                                                "PRODUCTIVITY", "VIDEO_PLAYERS", "MUSIC_AND_AUDIO", "PHOTOGRAPHY",
-                                                "BOOKS_AND_REFERENCE", "HEALTH_AND_FITNESS", "TRAVEL_AND_LOCAL",
-                                                "EDUCATION", "FOOD_AND_DRINK", "SPORTS", "Uncategorized"
-                                            )
-                                            categories.forEach { category ->
-                                                DropdownMenuItem(
-                                                    text = { Text(formatCategory(category)) },
-                                                    onClick = {
-                                                        viewModel.updateCategory(packageName, category)
-                                                        showCategoryMenu = false
-                                                    }
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
+                item(key = "header") {
+                    AppDetailHeader(
+                        packageName = packageName,
+                        appName = appName,
+                        versionCount = versions.size,
+                        currentCategory = viewModel.getCategory(packageName),
+                        onCategoryChange = { viewModel.updateCategory(packageName, it) }
+                    )
                 }
 
                 if (versions.isEmpty()) {
-                    item {
+                    item(key = "empty") {
                         Surface(
                             modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(20.dp),
@@ -195,11 +123,11 @@ fun DetailScreen(
                     }
                 }
 
-                item {
+                item(key = "deleteAll") {
                     Button(
                         onClick = { showDeleteDialog = true },
                         modifier = Modifier.fillMaxWidth(),
-                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.errorContainer, contentColor = MaterialTheme.colorScheme.error),
                         shape = RoundedCornerShape(12.dp)
                     ) {
                         Icon(Icons.Rounded.Delete, contentDescription = null, modifier = Modifier.size(18.dp))
@@ -210,49 +138,12 @@ fun DetailScreen(
             }
         }
 
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            color = MaterialTheme.colorScheme.background,
-            contentColor = MaterialTheme.colorScheme.onBackground
-        ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(start = 4.dp, end = 4.dp, bottom = 8.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(onClick = onBack) {
-                    Icon(
-                        imageVector = Icons.Rounded.ArrowBack,
-                        contentDescription = "Back",
-                        tint = MaterialTheme.colorScheme.onBackground
-                    )
-                }
-                Box(modifier = Modifier.weight(1f)) {
-                    Text(
-                        appName,
-                        modifier = Modifier.align(Alignment.CenterStart),
-                        fontWeight = FontWeight.Bold,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = MaterialTheme.colorScheme.onBackground,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-                Row(
-                    modifier = Modifier.padding(end = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    Text(
-                        if (isBlacklisted) "Blocked" else "Block",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = if (isBlacklisted) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
-                    )
-                    Switch(checked = isBlacklisted, onCheckedChange = { viewModel.toggleBlacklist(packageName) })
-                }
-            }
-        }
+        DetailTopBar(
+            appName = appName,
+            isBlacklisted = isBlacklisted,
+            onBack = onBack,
+            onToggleBlacklist = { viewModel.toggleBlacklist(packageName) }
+        )
 
         if (showHeaderShadow) {
             Box(
@@ -355,9 +246,147 @@ private fun VersionCard(
                             }
                         }
                     }
-                    if (!version.title.isNullOrBlank()) { Text(version.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface) }
+                    if (!version.title.isNullOrBlank()) { SelectionContainer { Text(version.title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface) } }
                     if (!version.textContent.isNullOrBlank()) { SelectionContainer { Text(version.textContent, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant) } }
                     if (version.isDismissed) { StatusBadge(text = "Dismissed", color = MaterialTheme.colorScheme.error) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetailTopBar(
+    appName: String,
+    isBlacklisted: Boolean,
+    onBack: () -> Unit,
+    onToggleBlacklist: () -> Unit
+) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        color = MaterialTheme.colorScheme.background,
+        contentColor = MaterialTheme.colorScheme.onBackground
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(start = 4.dp, end = 4.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            IconButton(onClick = onBack) {
+                Icon(
+                    imageVector = Icons.Rounded.ArrowBack,
+                    contentDescription = "Back",
+                    tint = MaterialTheme.colorScheme.onBackground
+                )
+            }
+            Box(modifier = Modifier.weight(1f)) {
+                Text(
+                    appName,
+                    modifier = Modifier.align(Alignment.CenterStart),
+                    fontWeight = FontWeight.Bold,
+                    style = MaterialTheme.typography.titleLarge,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Row(
+                modifier = Modifier.padding(end = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Text(
+                    if (isBlacklisted) "Blocked" else "Block",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (isBlacklisted) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface
+                )
+                Switch(checked = isBlacklisted, onCheckedChange = { onToggleBlacklist() })
+            }
+        }
+    }
+}
+
+@Composable
+private fun AppDetailHeader(
+    packageName: String,
+    appName: String,
+    versionCount: Int,
+    currentCategory: String,
+    onCategoryChange: (String) -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(20.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shadowElevation = 1.dp
+    ) {
+        Column(modifier = Modifier.padding(20.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                Box {
+                    AppIcon(packageName, size = 64)
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .size(24.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary)
+                            .shadow(elevation = 1.dp, shape = CircleShape, ambientColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f), spotColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f)),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text("$versionCount", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold)
+                    }
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(appName, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onSurface)
+                    Text(packageName, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+
+                    Spacer(Modifier.height(8.dp))
+
+                    Box {
+                        var showCategoryMenu by remember { mutableStateOf(false) }
+                        val categoryColor = Colors.getCategoryColor(currentCategory)
+                        Surface(
+                            onClick = { showCategoryMenu = true },
+                            shape = RoundedCornerShape(20.dp),
+                            color = categoryColor.copy(alpha = 0.15f),
+                            contentColor = categoryColor
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(Icons.Rounded.List, contentDescription = null, modifier = Modifier.size(14.dp))
+                                Text(
+                                    text = formatCategory(currentCategory),
+                                    style = MaterialTheme.typography.labelMedium,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        DropdownMenu(
+                            expanded = showCategoryMenu,
+                            onDismissRequest = { showCategoryMenu = false }
+                        ) {
+                            val categories = listOf(
+                                "COMMUNICATION", "SOCIAL", "NEWS_AND_MAGAZINES", "LIFESTYLE",
+                                "ENTERTAINMENT", "BUSINESS", "TOOLS", "FINANCE", "SHOPPING",
+                                "PRODUCTIVITY", "VIDEO_PLAYERS", "MUSIC_AND_AUDIO", "PHOTOGRAPHY",
+                                "BOOKS_AND_REFERENCE", "HEALTH_AND_FITNESS", "TRAVEL_AND_LOCAL",
+                                "EDUCATION", "FOOD_AND_DRINK", "SPORTS", "Uncategorized"
+                            )
+                            categories.forEach { category ->
+                                DropdownMenuItem(
+                                    text = { Text(formatCategory(category)) },
+                                    onClick = {
+                                        onCategoryChange(category)
+                                        showCategoryMenu = false
+                                    }
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }

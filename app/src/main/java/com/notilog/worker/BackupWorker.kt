@@ -30,17 +30,41 @@ class BackupWorker @AssistedInject constructor(
             val treeDocumentId = DocumentsContract.getTreeDocumentId(treeUri)
             val treeDocumentUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, treeDocumentId)
 
-            val timestamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(Date())
-            val fileName = "notilog_backup_$timestamp.json.gz"
+            val fileName = "notilog_backup.json.gz"
+            var backupFileUri: Uri? = null
+
+            try {
+                val childrenUri = DocumentsContract.buildChildDocumentsUriUsingTree(treeUri, treeDocumentId)
+                val projection = arrayOf(
+                    DocumentsContract.Document.COLUMN_DOCUMENT_ID,
+                    DocumentsContract.Document.COLUMN_DISPLAY_NAME
+                )
+                applicationContext.contentResolver.query(childrenUri, projection, null, null, null)?.use { cursor ->
+                    val idColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DOCUMENT_ID)
+                    val nameColumn = cursor.getColumnIndexOrThrow(DocumentsContract.Document.COLUMN_DISPLAY_NAME)
+                    while (cursor.moveToNext()) {
+                        val displayName = cursor.getString(nameColumn)
+                        if (displayName == fileName) {
+                            val docId = cursor.getString(idColumn)
+                            backupFileUri = DocumentsContract.buildDocumentUriUsingTree(treeUri, docId)
+                            break
+                        }
+                    }
+                }
+            } catch (e: Exception) {
+                // Fallback to creating a new document if querying fails
+            }
+
+            if (backupFileUri == null) {
+                backupFileUri = DocumentsContract.createDocument(
+                    applicationContext.contentResolver,
+                    treeDocumentUri,
+                    "application/gzip",
+                    fileName
+                ) ?: return@withContext Result.retry()
+            }
             
-            val backupFileUri = DocumentsContract.createDocument(
-                applicationContext.contentResolver,
-                treeDocumentUri,
-                "application/gzip",
-                fileName
-            ) ?: return@withContext Result.retry()
-            
-            val outputStream = applicationContext.contentResolver.openOutputStream(backupFileUri) ?: return@withContext Result.retry()
+            val outputStream = applicationContext.contentResolver.openOutputStream(backupFileUri!!, "w") ?: return@withContext Result.retry()
 
             GZIPOutputStream(outputStream).bufferedWriter().use { writer ->
                 val jsonWriter = JsonWriter(writer)

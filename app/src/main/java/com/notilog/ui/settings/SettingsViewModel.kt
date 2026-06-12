@@ -17,11 +17,13 @@ import com.notilog.worker.BackupWorker
 import com.notilog.worker.CleanupWorker
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.concurrent.TimeUnit
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
@@ -221,7 +223,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    suspend fun exportDataStreaming(outputStream: java.io.OutputStream) {
+    suspend fun exportDataStreaming(outputStream: java.io.OutputStream) = withContext(Dispatchers.IO) {
         val bos = outputStream
         java.util.zip.GZIPOutputStream(bos).bufferedWriter().use { writer ->
             val jsonWriter = com.google.gson.stream.JsonWriter(writer)
@@ -266,7 +268,7 @@ class SettingsViewModel @Inject constructor(
         }
     }
 
-    suspend fun importData(stream: InputStream): Int {
+    suspend fun importData(stream: InputStream): Int = withContext(Dispatchers.IO) {
         val bis = stream.buffered()
         bis.mark(10)
         val header = bis.read() or (bis.read() shl 8)
@@ -282,7 +284,7 @@ class SettingsViewModel @Inject constructor(
         parsedNotifications.forEach { notification ->
             notificationRepository.insert(notification)
         }
-        return parsedNotifications.size
+        parsedNotifications.size
     }
 }
 

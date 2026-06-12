@@ -1,6 +1,11 @@
 package com.notilog.ui.navigation
 
 import android.net.Uri
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -20,6 +25,8 @@ import com.notilog.ui.feed.FeedViewModel
 import com.notilog.ui.settings.BlacklistScreen
 import com.notilog.ui.settings.SettingsScreen
 import com.notilog.ui.trash.TrashScreen
+
+private val animDuration = 150
 
 sealed class Screen(val route: String) {
     object Feed : Screen("feed")
@@ -46,7 +53,13 @@ fun NotilogNavGraph(
         startDestination = startDestination,
         modifier = modifier
     ) {
-        composable(Screen.Feed.route) {
+        composable(
+            route = Screen.Feed.route,
+            enterTransition = { fadeIn(tween(animDuration)) },
+            exitTransition = { fadeOut(tween(animDuration)) },
+            popEnterTransition = { fadeIn(tween(animDuration)) },
+            popExitTransition = { fadeOut(tween(animDuration)) }
+        ) {
             val feedViewModel: FeedViewModel = hiltViewModel()
             pendingCategory?.let { category ->
                 LaunchedEffect(category) {
@@ -60,10 +73,22 @@ fun NotilogNavGraph(
                 }
             )
         }
-        composable(Screen.Insights.route) {
+        composable(
+            route = Screen.Insights.route,
+            enterTransition = { fadeIn(tween(animDuration)) },
+            exitTransition = { fadeOut(tween(animDuration)) },
+            popEnterTransition = { fadeIn(tween(animDuration)) },
+            popExitTransition = { fadeOut(tween(animDuration)) }
+        ) {
             com.notilog.ui.insights.InsightsScreen()
         }
-        composable(Screen.Settings.route) {
+        composable(
+            route = Screen.Settings.route,
+            enterTransition = { fadeIn(tween(animDuration)) },
+            exitTransition = { fadeOut(tween(animDuration)) },
+            popEnterTransition = { fadeIn(tween(animDuration)) },
+            popExitTransition = { fadeOut(tween(animDuration)) }
+        ) {
             SettingsScreen(
                 onManageBlacklist = {
                     navController.navigate(Screen.Blacklist.route)
@@ -73,12 +98,24 @@ fun NotilogNavGraph(
                 }
             )
         }
-        composable(Screen.Blacklist.route) {
+        composable(
+            route = Screen.Blacklist.route,
+            enterTransition = { slideInHorizontally(tween(animDuration)) { it } + fadeIn(tween(animDuration)) },
+            exitTransition = { fadeOut(tween(animDuration)) },
+            popEnterTransition = { fadeIn(tween(animDuration)) },
+            popExitTransition = { slideOutHorizontally(tween(animDuration)) { it } + fadeOut(tween(animDuration)) }
+        ) {
             BlacklistScreen(
                 onBack = { navController.popBackStack() }
             )
         }
-        composable(Screen.Trash.route) {
+        composable(
+            route = Screen.Trash.route,
+            enterTransition = { slideInHorizontally(tween(animDuration)) { it } + fadeIn(tween(animDuration)) },
+            exitTransition = { fadeOut(tween(animDuration)) },
+            popEnterTransition = { fadeIn(tween(animDuration)) },
+            popExitTransition = { slideOutHorizontally(tween(animDuration)) { it } + fadeOut(tween(animDuration)) }
+        ) {
             TrashScreen(
                 onBack = { navController.popBackStack() }
             )
@@ -89,7 +126,11 @@ fun NotilogNavGraph(
                 navArgument("packageName") { type = NavType.StringType },
                 navArgument("systemId") { type = NavType.IntType },
                 navArgument("tag") { type = NavType.StringType; nullable = true }
-            )
+            ),
+            enterTransition = { slideInHorizontally(tween(animDuration)) { it } + fadeIn(tween(animDuration)) },
+            exitTransition = { fadeOut(tween(animDuration)) },
+            popEnterTransition = { fadeIn(tween(animDuration)) },
+            popExitTransition = { slideOutHorizontally(tween(animDuration)) { it } + fadeOut(tween(animDuration)) }
         ) { backStackEntry ->
             val packageName = backStackEntry.arguments?.getString("packageName")?.let(Uri::decode).orEmpty()
             val systemId = backStackEntry.arguments?.getInt("systemId") ?: 0

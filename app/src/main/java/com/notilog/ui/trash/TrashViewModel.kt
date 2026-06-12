@@ -17,7 +17,7 @@ class TrashViewModel @Inject constructor(
 ) : ViewModel() {
 
     val deletedNotifications: StateFlow<List<NotificationEntity>> = notificationRepository.getDeletedNotifications()
-        .stateIn(viewModelScope, SharingStarted.Lazily, emptyList())
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     fun restoreFromTrash(id: Long) {
         viewModelScope.launch {
